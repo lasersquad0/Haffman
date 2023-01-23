@@ -1,23 +1,28 @@
 import java.io.*;
-import java.util.*;
+import java.time.LocalTime;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Main {
 
 	public static void main(String[] args) throws IOException
 	{
+		//Comparator<HfNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
+
 		//final int MAX_BUF_SIZE = 1_000_000_000;
 		//final int FILE_BUFFER;
-		final String FN_TO_COMPRESS   = "Война и мир.txt"; //"1.docx";//"Apps.index"; //"voyna-i-mir-tom-1.txt"; "primes - 20000G small.txt";
-		//final String FN_COMPRESSED    = "primes - 20000G small.hf";
-		final String FN_TO_UNCOMPRESS =  "Война и мир.hf"; //"primes - 20000G small.hf";
-		//final String FN_UNCOMPRESSED  = "primes - 20000G small 2.txt";//"Война и мир2.txt";
+		final String FN_TO_COMPRESS   = "primes - 20000-20010G.txt"; //"primes - 20000G small.txt"; //"primes - 0-10G.txt";  //Война и мир.txt"; //"1.docx";//"Apps.index"; //"voyna-i-mir-tom-1.txt";
 
-		//Comparator<HfNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
-		System.out.println("Start.");
+		final String FN_TO_UNCOMPRESS = "primes - 20000-20010G.hf"; //"primes - 0-10G.hf"; //Война и мир.hf"; "primes - 20000G small.hf";
+
+		//printTime(true);
+		var log = Logger.getGlobal();
+		log.log(Level.INFO, "Start.");
+		//System.out.println("Start.");
 
 		HFArchiver arc = new HFArchiver();
-		//arc.compressFile(FN_TO_COMPRESS);
-		arc.unCompressFile(FN_TO_UNCOMPRESS);
+		arc.compressFile(FN_TO_COMPRESS);
+		//arc.unCompressFile(FN_TO_UNCOMPRESS);
 
 
 		/*
@@ -39,12 +44,8 @@ public class Main {
 		System.out.format("rcodes4 %s\n", rcodes4.toString());
 
 
-
 		DataOutputStream cout = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(FN_COMPRESSED), FILE_BUFFER));
 */
-
-
-
 
 		/*
 		File inputFile = new File(FN_TO_UNCOMPRESS);
@@ -57,29 +58,36 @@ public class Main {
 		uout.close();
 */
 
-		System.out.println("Finished.");
+		log.log(Level.INFO, "Finished.");
+		//System.out.println("Finished.");
+		//printTime(true);
 	}
 
-
-
-	private static void printNodes(ArrayList<HFNode> nodes)
+/*
+	private static void printTime(boolean crlf)
 	{
-		for (HFNode node : nodes)
-		{
-			System.out.format("'%s'=%d  ", node.symbol, node.weight);
-		}
-		System.out.println();
-	}
+		LocalTime tm = LocalTime.now();
+		System.out.format("Datetime: %tH:%tM:%tS:%tL ", tm,tm,tm,tm);
 
-	private static String printTree(HFNode nd)
+		if(crlf)
+			System.out.println();
+	}
+	private static void printTimeShort(boolean crlf)
 	{
-		String res = nd.symbol + "-";
-		if(nd.leftNode != null)
-			res += printTree(nd.leftNode);
-		if(nd.rightNode != null)
-			res += printTree(nd.rightNode);
+		LocalTime tm = LocalTime.now();
+		System.out.format("%tMm:%tSs ", tm,tm);
 
-		return res;
+		if(crlf)
+			System.out.println();
 	}
+
+	private static void printTime(String msg)
+	{
+		LocalTime tm = LocalTime.now();
+		System.out.format("Datetime: %tH:%tM:%tS:%tL\n", tm,tm,tm,tm);
+		System.out.println(msg);
+	}
+
+*/
 
 }

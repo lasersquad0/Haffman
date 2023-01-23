@@ -4,19 +4,12 @@ import java.util.zip.CRC32;
 
 public class HFTree
 {
-	private int[] symbols = {',','0','1','2','3','4','5','6','7','8','9'}; // all symbols that are used in input file
-	private int[] weights = { 7,  14,  9,  14, 9,  7,  7,  7,  9,  7,  9};  //  weights of symbols above
+	private int[] symbols; // all symbols that are used in input file
+	private int[] weights;  //  weights of symbols above
 	private HFNode treeRoot;
-	ArrayList<Integer> symbolsList = new ArrayList<>(); // просто список всех симвоволов которые имеют коды.
-	ArrayList<Integer> codesList = new ArrayList<>(); // просто список всех кодов из дерева
-	ArrayList<Byte> codeLenList = new ArrayList<>();  // просто список длинн кодов, номера индексов совпадают с номерами индексов codesList.
-	ArrayList<String> codesStrList = new ArrayList<>(); // просто список String кодов, номера индексов совпадают с номерами индексов codesList.
-	HashMap<Integer,Integer> codes = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
-	HashMap<Integer,Byte> codeLen = new HashMap<>();  // индекс - элемент из symbols, значение - длина кода из дерева
-
-	//HashMap<Integer, Integer> rcodes = new HashMap<>();  // индекс это код из дерева, значение это элемент из symbols
-	//HashMap<Integer, Integer> rcodes3 = new HashMap<>();
-	//HashMap<Integer, Integer> rcodes4 = new HashMap<>();
+	ArrayList<HFCode> codesList = new ArrayList<>();
+	//ArrayList<String> codesStrList = new ArrayList<>(); // просто список String кодов, номера индексов совпадают с номерами индексов codesList.
+	HashMap<Integer,HFCode> codesMap = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
 	int minCodeLen = Integer.MAX_VALUE;
 	int maxCodeLen;
 	private final InputStream sin;
@@ -89,7 +82,7 @@ public class HFTree
 		{
 			sum += l;
 			if(l > 0) nonzero++;
-			min = Math.min(min, l);
+			if(l > 0) min = Math.min(min, l);
 			max = Math.max(max, l);
 		}
 
@@ -123,6 +116,7 @@ public class HFTree
 			nodes.add(new HFNode(weights[i], (char)symbols[i]));
 		}
 
+		//Comparator<HFNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
 		nodes.sort(null);
 
 		do
@@ -154,11 +148,14 @@ public class HFTree
 		calcCodesRecc(treeRoot.leftNode,"0");
 		calcCodesRecc(treeRoot.rightNode,"1");
 
-		System.out.format("symbols size=%d %s\n",symbolsList.size(), symbolsList.toString());
-		System.out.format("codes size=%d %s\n",codesList.size(), codesList.toString());
-		System.out.format("codeLen size=%d %s\n",codeLenList.size(), codeLenList.toString());
+		codesList.sort(null); // важно чтобы коды были отсортированы от более короткого к более длиному что бы поиск кодов был быстрее при uncompress
+
+		//System.out.format("symbols size=%d %s\n",symbolsList.size(), symbolsList.toString());
+		//System.out.format("codes size=%d %s\n",codesList.size(), codesList.toString());
+		//System.out.format("codeLen size=%d %s\n",codeLenList.size(), codeLenList.toString());
 		System.out.format("min=%d, max=%d\n", minCodeLen, maxCodeLen);
-		System.out.format("codesStr size=%d %s\n",codesStrList.size(), codesStrList.toString());
+		//System.out.format("codesStr size=%d %s\n",codesStrList.size(), codesStrList.toString());
+		System.out.format("hfcodes size=%d %s\n", codesList.size(), codesList.toString());
 
 /*
 		for (var entry : codes.entrySet())
@@ -179,12 +176,16 @@ public class HFTree
 		if((nd.leftNode == null) && (nd.rightNode == null))
 		{
 			int cd = Integer.valueOf(code,2);
-			symbolsList.add(nd.symbol);
-			codesList.add(cd);             // TODO возможно будет правильнее отсортировать коды от большей длины к меньшей что бы не было колизий при поиске и распознавании кодов.
-			codesStrList.add(code);
-			codeLenList.add((byte)code.length());
-			codes.put(nd.symbol, cd);
-			codeLen.put(nd.symbol, (byte)code.length());  // длина кода в битах точно не больше 255 (один байт).
+			//symbolsList.add(nd.symbol);
+			//codesList.add(cd);
+			//codeLenList.add((byte)code.length());
+			//codesStrList.add(code);
+
+			HFCode hfc = new HFCode(nd.symbol, cd, (byte)code.length(), code);
+			codesMap.put(nd.symbol, hfc);
+			//codeLen.put(nd.symbol, (byte)code.length());  // длина кода в битах точно не больше 255 (один байт).
+
+			codesList.add(hfc);
 
 			maxCodeLen = Math.max(maxCodeLen, code.length());
 			minCodeLen = Math.min(minCodeLen, code.length());
@@ -194,13 +195,14 @@ public class HFTree
 
 	public byte[] getTable()
 	{
-		byte[] buffer = new byte[tableRecSize*codesList.size()];  // byte + int + byte = 6
+		byte[] buffer = new byte[tableRecSize* codesList.size()];  // byte + int + byte = 6
 
 		for (int i = 0; i < codesList.size(); i++)
 		{
-			int ch = symbolsList.get(i);
-			int code = codesList.get(i);
-			byte len = codeLenList.get(i);
+			HFCode hfc = codesList.get(i);
+			int ch = hfc.symbol; //symbolsList.get(i);
+			int code = hfc.code; //codesList.get(i);
+			byte len = hfc.len; //codeLenList.get(i);
 			int index = tableRecSize*i;  // TODO можно заменить инкрементом index на tableRecSize
 			buffer[index] = (byte)ch;
 			buffer[index + 1] = (byte)(code >>> 24);
@@ -222,11 +224,14 @@ public class HFTree
 			int ch = dis.readByte();
 			int code = dis.readInt();
 			byte len = dis.readByte();
-			symbolsList.add(ch);
-			codesList.add(code);
-			codeLenList.add(len);
-			codes.put(ch, code);
-			codeLen.put(ch, len);
+			//symbolsList.add(ch);
+			//codesList.add(code);
+			//codeLenList.add(len);
+
+			HFCode hfc = new HFCode(ch, code, len, "");
+			codesMap.put(ch, hfc);
+			//codeLen.put(ch, len);
+			codesList.add(hfc);
 
 			maxCodeLen = Math.max(maxCodeLen, len);
 			minCodeLen = Math.min(minCodeLen, len);
@@ -234,9 +239,12 @@ public class HFTree
 			tableSize -= tableRecSize;
 		}
 
-		System.out.format("symbols size=%d %s\n",symbolsList.size(), symbolsList.toString());
-		System.out.format("codes size=%d %s\n",codesList.size(), codesList.toString());
-		System.out.format("codeLen size=%d %s\n",codeLenList.size(), codeLenList.toString());
+		codesList.sort(null);
+
+	//	System.out.format("symbols size=%d %s\n",symbolsList.size(), symbolsList.toString());
+	//	System.out.format("codes size=%d %s\n",codesList.size(), codesList.toString());
+	//	System.out.format("codeLen size=%d %s\n",codeLenList.size(), codeLenList.toString());
+		System.out.format("hfcodes size=%d %s\n", codesList.size(), codesList.toString());
 		System.out.format("min=%d, max=%d\n", minCodeLen, maxCodeLen);
 	}
 

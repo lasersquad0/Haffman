@@ -57,27 +57,28 @@ public class HFCompressor
 		int counter = 0;
 		while ((ch = sin.read()) != -1)
 		{
-			int code = tree.codes.get(ch);
-			byte len = tree.codeLen.get(ch);
+			HFCode hfc = tree.codesMap.get(ch);
+			//int code = tree.codes.get(ch);
+			//byte len = tree.codeLen.get(ch);
 
-			if (counter + len > Integer.SIZE) // новый byte не влазит в остаток слова, делим на 2 части
+			if (counter + hfc.len > Integer.SIZE) // новый byte не влазит в остаток слова, делим на 2 части
 			{
 				accum = accum << Integer.SIZE - counter; // освобождаем сколько осталось места в слове
-				int len2 = len + counter - Integer.SIZE; // кол-во не вмещающихся битов
-				int code2 = code >>> len2; // в текущее слово вставляем только часть битов. остальная часть пойдет в новое слово
+				int len2 = hfc.len + counter - Integer.SIZE; // кол-во не вмещающихся битов
+				int code2 = hfc.code >>> len2; // в текущее слово вставляем только часть битов. остальная часть пойдет в новое слово
 				accum = accum | code2;
 				writeInt(accum); // заполнили слово полностью
 				accum = 0;
 				int mask = 0xFFFFFFFF >>> Integer.SIZE - len2;
-				code &= mask; //masks[len2]; // затираем биты которые ранее вставили в предыдущее слово
-				accum = accum | code;
+				hfc.code &= mask;   // затираем биты которые ранее вставили в предыдущее слово
+				accum = accum | hfc.code;
 				counter = len2;
 			}
 			else
 			{
-				accum = accum << len;   // освобождаем на длину вставляемого кода
-				accum = accum | code;
-				counter += len;
+				accum = accum << hfc.len;   // освобождаем на длину вставляемого кода
+				accum = accum | hfc.code;
+				counter += hfc.len;
 				if (counter == Integer.SIZE)
 				{
 					writeInt(accum); // заполнили слово ровно полностью
@@ -143,10 +144,12 @@ public class HFCompressor
 		sout.write(writeBuffer, 0, 4);
 		encodedBytes += 4;
 	}
-
+/*
 	private String getArchiveFilename(String filename)
 	{
 		return filename.substring(0, filename.lastIndexOf(".")) + HF_ARCHIVE_EXT;
 	}
+ */
+
 }
 
