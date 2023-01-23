@@ -1,12 +1,14 @@
 import java.io.*;
+import java.util.logging.Logger;
 
 public class HFUncompressor
 {
+	private final static Logger logger = Logger.getLogger("HFLogger");
 	HFTree tree;
 	HFFileFormat fileFormat;
 	//String OUTPUT_FILENAME;
 	//String ARCHIVE_FILENAME;
-	//final int MAX_BUF_SIZE = 1_000_000_000; // если файлм >1G, то используем буфер этого размера иначе буфер размера файла
+	//final int MAX_BUF_SIZE = 1_000_000_000; // если файл >1G, то используем буфер этого размера иначе буфер размера файла
 	//int FILE_BUFFER;         // фактический размер буфера для file streams in and out
 	boolean externalStreams; // if false we call close() on streams after finishing compress operation
 	InputStream sin;         // stream with data to compress
@@ -47,6 +49,8 @@ public class HFUncompressor
 
 	private void uncompressInternal() throws IOException
 	{
+		logger.entering(this.getClass().getName(),"uncompressInternal");
+
 		int encodedBytes = 0;
 		int mask;
 		int data;
@@ -70,16 +74,16 @@ public class HFUncompressor
 			if(remaining < Integer.SIZE) // есть остатки с прошлого байта они в data2
 			{
 				data2 <<= (Integer.SIZE - remaining);    // освобождаем место под новые биты
-				int tmp = data >>> remaining;
+				int tmp = data >>> remaining;            // готовим новые данные data для соединения с остатками старых
 				data2 |= tmp;
-				int tmpRemaining = parseInt(data2); // после вызова у нас есть 2 остатка битов: часть битов data2 и вторая часть это неиспользованые биты в data
+				int tmpRemaining = parseInt(data2); // после вызова у нас есть 2 остатка битов: часть битов data2 и вторая часть это неиспользованные биты в data
 
-				if(remaining + tmpRemaining > Integer.SIZE) // остатков может оказаться больше чем вмещает int. обьединяем и раскодируем их
+				if(remaining + tmpRemaining > Integer.SIZE) // Остатков может оказаться больше чем вмещает int. Объединяем и раскодируем их
 				{
 					data2 <<= (Integer.SIZE - tmpRemaining);  // освобождаем все не занятое в data2 место под новые биты
 					tmp = data >>> (remaining - (Integer.SIZE - tmpRemaining));   // убираем лишние младшие биты из data что бы добавить к тому что осталось в data2 после parseInt
 					mask = 0xFFFFFFFF >>> tmpRemaining;
-					tmp = tmp & mask;        // очищаем лишние биты перед обьединением байтов.
+					tmp = tmp & mask;        // очищаем лишние биты перед объединением байтов.
 					data2 |= tmp;
 					remaining += tmpRemaining;
 					remaining -= Integer.SIZE;
@@ -94,11 +98,11 @@ public class HFUncompressor
 				// соединяем остаток битов от parseInt и биты которые не влезли от data
 				data2 <<= remaining;
 				mask = 0xFFFFFFFF >>> (Integer.SIZE - remaining);
-				data &= mask; //masks[remaining]; // очищаем лишние биты перед обьединением байтов.
+				data &= mask; //masks[remaining]; // очищаем лишние биты перед объединением байтов.
 				data2 |= data;
 				remaining += tmpRemaining;
 
-				if(remaining == Integer.SIZE) // из остатков набрался целый байт. записываем его перед чтением следующего
+				if(remaining == Integer.SIZE) // Из остатков набрался целый байт. Записываем его перед чтением следующего
 				{
 					remaining = parseInt(data2);
 				}
@@ -118,6 +122,8 @@ public class HFUncompressor
 		//remaining = parseInt(data2);
 
 		sout.flush();
+
+		logger.exiting(this.getClass().getName(),"uncompressInternal");
 	}
 
 	/**
@@ -125,7 +131,7 @@ public class HFUncompressor
 	 * @param code int для парсинга
 	 *
 	 * @return возвращает кол-во не оставшихся нераспаршеных битов в code.
-	 * @throws IOException
+	 * @throws IOException если при записи в поток, что-то пошло не так
 	 */
 	private int parseInt(int code) throws IOException
 	{
@@ -137,7 +143,6 @@ public class HFUncompressor
 			for(int i = 0; i < tree.codesList.size(); i++)
 			{
 				HFCode hfc = tree.codesList.get(i);
-				//int len = tree.codeLenList.get(i);
 				if(hfc.len > remaining) continue;    // если текущий код длиннее оставшегося в ccode просто пропускаем его
 
 				int mask = 0xFFFFFFFF << (Integer.SIZE - hfc.len);
@@ -146,7 +151,6 @@ public class HFUncompressor
 				code2 = code2 ^ c;            // XOR - если операнды равны то результат будет 0.
 				if(code2 == 0)  // совпал код
 				{
-					//int ch = tree.symbolsList.get(i);
 					writeByte(hfc.symbol);
 					ccode = ccode << hfc.len; // выравниваем оставшиеся биты влево.
 					remaining -= hfc.len;
@@ -155,8 +159,8 @@ public class HFUncompressor
 				}
 			}
 
-			// здесь в целом может быть кейс когда весь цикл прошел, а код так и не найден. Это значит что осталось мало битов в ccode и сравнение не сработало.
-			// сработает когда parent method докинет еще битов в ccode
+			// Здесь в целом может быть кейс когда весь цикл прошел, а код так и не найден. Это значит что осталось мало битов в ccode и сравнение не сработало.
+			// Сработает когда parent method докинет еще битов в ccode
 			assert !((remaining > tree.maxCodeLen) && (!found));
 
 			if(!found) break;    // прерываем цикл, что бы докинулось еще битов в ccode

@@ -5,6 +5,8 @@ import java.util.logging.Logger;
 
 public class Main {
 
+	private final static Logger logger = Logger.getLogger("HFLogger");
+
 	public static void main(String[] args) throws IOException
 	{
 		//Comparator<HfNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
@@ -15,14 +17,11 @@ public class Main {
 
 		final String FN_TO_UNCOMPRESS = "primes - 20000-20010G.hf"; //"primes - 0-10G.hf"; //Война и мир.hf"; "primes - 20000G small.hf";
 
-		//printTime(true);
-		var log = Logger.getGlobal();
-		log.log(Level.INFO, "Start.");
-		//System.out.println("Start.");
+		logger.info("Huffman archiver. Start.");
 
 		HFArchiver arc = new HFArchiver();
-		arc.compressFile(FN_TO_COMPRESS);
-		//arc.unCompressFile(FN_TO_UNCOMPRESS);
+		//arc.compressFile(FN_TO_COMPRESS);
+		arc.unCompressFile(FN_TO_UNCOMPRESS);
 
 
 		/*
@@ -58,36 +57,7 @@ public class Main {
 		uout.close();
 */
 
-		log.log(Level.INFO, "Finished.");
-		//System.out.println("Finished.");
-		//printTime(true);
+		logger.info("Finished.");
 	}
-
-/*
-	private static void printTime(boolean crlf)
-	{
-		LocalTime tm = LocalTime.now();
-		System.out.format("Datetime: %tH:%tM:%tS:%tL ", tm,tm,tm,tm);
-
-		if(crlf)
-			System.out.println();
-	}
-	private static void printTimeShort(boolean crlf)
-	{
-		LocalTime tm = LocalTime.now();
-		System.out.format("%tMm:%tSs ", tm,tm);
-
-		if(crlf)
-			System.out.println();
-	}
-
-	private static void printTime(String msg)
-	{
-		LocalTime tm = LocalTime.now();
-		System.out.format("Datetime: %tH:%tM:%tS:%tL\n", tm,tm,tm,tm);
-		System.out.println(msg);
-	}
-
-*/
 
 }

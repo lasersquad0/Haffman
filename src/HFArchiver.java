@@ -1,9 +1,9 @@
 import java.io.*;
-import java.time.LocalTime;
 import java.util.logging.*;
 
 public class HFArchiver
 {
+	private final static Logger logger = Logger.getLogger("HFLogger");
 	final int MAX_BUF_SIZE = 1_000_000_000; // если файл >1G, то используем буфер этого размера иначе буфер размера файла
 	private static final String HF_ARCHIVE_EXT = ".hf";
 	HFTree tree;
@@ -11,9 +11,7 @@ public class HFArchiver
 
 	public void compressFile(String filename) throws IOException
 	{
-		var log = Logger.getGlobal();
-		log.log(Level.INFO, "Analysing file, calculating weights.");
-		//printTime("Analysing file, calculating weights.");
+		logger.info(String.format("Analysing file '%s', calc weights, building HF table.",filename));
 
 		File inFile = new File(filename);
 		long fileLen = inFile.length();
@@ -26,8 +24,7 @@ public class HFArchiver
 
 		sin.close();
 
-		log.log(Level.INFO, "File is analysed. Huffman table is build.");
-		//printTime("File is analysed. Huffman table is build.");
+		logger.info("Analysis finished. HF table is build.");
 
 		HFFileFormat fileFormat = new HFFileFormat();
 		fileFormat.filenameUncomp = filename;
@@ -42,8 +39,7 @@ public class HFArchiver
 		fileFormat.saveHeader(sout);
 		sout.write(table);
 
-		log.log(Level.INFO, "Archive file header and HF table are saved. Starting comression...");
-		//printTime("Archive file header and HF table are saved. Starting comression...");
+		logger.info("Starting data compression...");
 
 		HFCompressor c = new HFCompressor(sin, sout);
 		c.compress(tree);
@@ -57,15 +53,12 @@ public class HFArchiver
 		raf.writeLong(c.encodedBytes);
 		raf.close();
 
-		log.log(Level.INFO, "Compression finished.");
-		//printTime("Compression finished.");
+		logger.info("Compression finished.");
 	}
 
 	public void unCompressFile(String arcFilename) throws IOException
 	{
-		var log = Logger.getGlobal();
-		log.log(Level.INFO, "Loading archive file and HF table.");
-		//printTime("Loading archive file and HF table.");
+		logger.log(Level.INFO, "Loading archive file and HF table.");
 
 		File inFile = new File(arcFilename);
 		long fileLen = inFile.length();
@@ -79,8 +72,7 @@ public class HFArchiver
 		tree = new HFTree(sin);
 		tree.loadTable(fileFormat.hfTableSize);
 
-		log.log(Level.INFO, "File and HF table are loaded. Starting uncompressing...");
-		//printTime("File and HF table are loaded. Starting uncompressing...");
+		logger.log(Level.INFO, "File and HF table are loaded. Starting uncompressing...");
 
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fileFormat.filenameUncomp), FILE_BUFFER);
 
@@ -90,22 +82,8 @@ public class HFArchiver
 		sout.close();
 		sin.close();
 
-		log.log(Level.INFO, "Uncompressing is done.");
-		//printTime("Uncompressing is done.");
-
+		logger.log(Level.INFO, "Uncompressing is done.");
 
 	}
-
-	/*
-	private static void printTime(String msg)
-	{
-		LocalTime tm = LocalTime.now();
-		System.out.format("%tH:%tM:%tS:%tL ", tm,tm,tm,tm);
-		System.out.println(msg);
-	}
-
-	 */
-
-
 
 }

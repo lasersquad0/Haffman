@@ -1,9 +1,11 @@
 import java.io.*;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.zip.CRC32;
 
 public class HFTree
 {
+	private final static Logger logger = Logger.getLogger("HFLogger");
 	private int[] symbols; // all symbols that are used in input file
 	private int[] weights;  //  weights of symbols above
 	private HFNode treeRoot;
@@ -13,7 +15,7 @@ public class HFTree
 	int minCodeLen = Integer.MAX_VALUE;
 	int maxCodeLen;
 	private final InputStream sin;
-	private boolean externalStream;
+	private final boolean externalStream;
 //	private String FILENAME_FOR_WEIGHTS;
 	private final int MAX_BUF_SIZE = 100_000_000;
 	private final int tableRecSize = 6; // размер одной записи таблицы кодов хаффмана (6=byte+int+byte)
@@ -39,13 +41,15 @@ public class HFTree
 	}
 
 	/**
-	 * Читает весь файл и считает часточу встречаемости байтов в нем
+	 * Читает весь файл и считает частоу встречаемости байтов в нем
 	 * Для binary files считает частоты тоже корректно.
 	 * *** Внимание - портит InputStream sin, передвигает его на конец файла *****
-	 * @throws IOException
+	 * @throws IOException если что-то произошло с потоком
 	 */
 	private void calcWeights() throws IOException
 	{
+		logger.entering(this.getClass().getName(),"calcWeights");
+
 		int FILE_BUFFER = MAX_BUF_SIZE; // если дали поток, то мы не знаем размер файла читаем кусками по MAX_BUF_SIZE (100М) тогда
 
 /*		if(sin == null) // если не дали поток значит есть имя файла, создаем поток из имени файла
@@ -102,14 +106,18 @@ public class HFTree
 
 		if(!externalStream) sin.close();
 
-		System.out.println(Arrays.toString(symbols));
-		System.out.println(Arrays.toString(weights));
-		System.out.format("min=%d, max=%d\n", min, max);
-		System.out.format("nonzero=%d, sum(size)=%d\n", nonzero, sum);
+		logger.info(String.format("symbols=%s", Arrays.toString(symbols)));
+		logger.info(String.format("weights=%s",Arrays.toString(weights)));
+		logger.info(String.format("min weight=%d, max weight=%d", min, max));
+		logger.info(String.format("nonzero=%d, sum(size)=%d", nonzero, sum));
+
+		logger.exiting(this.getClass().getName(),"calcWeights");
 	}
 
 	private void buildTree()
 	{
+		logger.entering(this.getClass().getName(),"buildTree");
+
 		var nodes = new ArrayList<HFNode>();
 		for (int i = 0; i < symbols.length; i++)
 		{
@@ -141,29 +149,23 @@ public class HFTree
 		}while(nodes.size() != 1);
 
 		treeRoot = nodes.get(0);
+
+		logger.exiting(this.getClass().getName(),"buildTree");
 	}
 
 	private void calcCodes()
 	{
+		logger.entering(this.getClass().getName(),"calcCodes");
+
 		calcCodesRecc(treeRoot.leftNode,"0");
 		calcCodesRecc(treeRoot.rightNode,"1");
 
 		codesList.sort(null); // важно чтобы коды были отсортированы от более короткого к более длиному что бы поиск кодов был быстрее при uncompress
 
-		//System.out.format("symbols size=%d %s\n",symbolsList.size(), symbolsList.toString());
-		//System.out.format("codes size=%d %s\n",codesList.size(), codesList.toString());
-		//System.out.format("codeLen size=%d %s\n",codeLenList.size(), codeLenList.toString());
-		System.out.format("min=%d, max=%d\n", minCodeLen, maxCodeLen);
-		//System.out.format("codesStr size=%d %s\n",codesStrList.size(), codesStrList.toString());
-		System.out.format("hfcodes size=%d %s\n", codesList.size(), codesList.toString());
+		logger.info(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
+		logger.info(String.format("hfcodes size=%d %s", codesList.size(), codesList));
 
-/*
-		for (var entry : codes.entrySet())
-		{
-			var key1 = entry.getKey();
-			var val1 = entry.getValue();
-		}
- */
+		logger.exiting(this.getClass().getName(),"calcCodes");
 	}
 
 	private void calcCodesRecc(HFNode nd, String code)
@@ -176,14 +178,9 @@ public class HFTree
 		if((nd.leftNode == null) && (nd.rightNode == null))
 		{
 			int cd = Integer.valueOf(code,2);
-			//symbolsList.add(nd.symbol);
-			//codesList.add(cd);
-			//codeLenList.add((byte)code.length());
-			//codesStrList.add(code);
 
 			HFCode hfc = new HFCode(nd.symbol, cd, (byte)code.length(), code);
 			codesMap.put(nd.symbol, hfc);
-			//codeLen.put(nd.symbol, (byte)code.length());  // длина кода в битах точно не больше 255 (один байт).
 
 			codesList.add(hfc);
 
@@ -200,9 +197,9 @@ public class HFTree
 		for (int i = 0; i < codesList.size(); i++)
 		{
 			HFCode hfc = codesList.get(i);
-			int ch = hfc.symbol; //symbolsList.get(i);
-			int code = hfc.code; //codesList.get(i);
-			byte len = hfc.len; //codeLenList.get(i);
+			int ch = hfc.symbol;
+			int code = hfc.code;
+			byte len = hfc.len;
 			int index = tableRecSize*i;  // TODO можно заменить инкрементом index на tableRecSize
 			buffer[index] = (byte)ch;
 			buffer[index + 1] = (byte)(code >>> 24);
@@ -224,13 +221,9 @@ public class HFTree
 			int ch = dis.readByte();
 			int code = dis.readInt();
 			byte len = dis.readByte();
-			//symbolsList.add(ch);
-			//codesList.add(code);
-			//codeLenList.add(len);
 
 			HFCode hfc = new HFCode(ch, code, len, "");
 			codesMap.put(ch, hfc);
-			//codeLen.put(ch, len);
 			codesList.add(hfc);
 
 			maxCodeLen = Math.max(maxCodeLen, len);
@@ -241,11 +234,8 @@ public class HFTree
 
 		codesList.sort(null);
 
-	//	System.out.format("symbols size=%d %s\n",symbolsList.size(), symbolsList.toString());
-	//	System.out.format("codes size=%d %s\n",codesList.size(), codesList.toString());
-	//	System.out.format("codeLen size=%d %s\n",codeLenList.size(), codeLenList.toString());
-		System.out.format("hfcodes size=%d %s\n", codesList.size(), codesList.toString());
-		System.out.format("min=%d, max=%d\n", minCodeLen, maxCodeLen);
+		logger.info(String.format("codes size=%d %s", codesList.size(), codesList));
+		logger.info(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
 	}
 
 }

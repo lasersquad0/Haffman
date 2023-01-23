@@ -1,13 +1,15 @@
 import java.io.*;
+import java.util.logging.Logger;
 
 public class HFCompressor
 {
-	final String HF_ARCHIVE_EXT = ".hf";
+	private final static Logger logger = Logger.getLogger("HFLogger");
+	//final String HF_ARCHIVE_EXT = ".hf";
 	HFTree tree;
 	byte[] writeBuffer = new byte[4];  // буфер для записи int в OutputStream
 	//String INPUT_FILENAME;
 	//String ARCHIVE_FILENAME;
-	final int MAX_BUF_SIZE = 1_000_000_000; // если файлм >1G, то используем буфер этого размера иначе буфер размера файла
+	//final int MAX_BUF_SIZE = 1_000_000_000; // если файл >1G, то используем буфер этого размера иначе буфер размера файла
 	//int FILE_BUFFER;         // фактический размер буфера для file streams in and out
 	boolean externalStreams; // if false we call close() on streams after finishing compress operation
 	InputStream sin;         // stream with data to compress
@@ -47,11 +49,13 @@ public class HFCompressor
 		//fileFormat.hfTableSize = (short)table.length;
 		//fileFormat.saveHeader(sout);
 		//sout.write(table);
-		compressNoBuildTree();
+		compressInternal();
 	}
 
-	public void compressNoBuildTree() throws IOException
+	public void compressInternal() throws IOException
 	{
+		logger.entering(this.getClass().getName(),"compressInternal");
+
 		int ch;
 		int accum = 0;
 		int counter = 0;
@@ -65,7 +69,7 @@ public class HFCompressor
 			{
 				accum = accum << Integer.SIZE - counter; // освобождаем сколько осталось места в слове
 				int len2 = hfc.len + counter - Integer.SIZE; // кол-во не вмещающихся битов
-				int code2 = hfc.code >>> len2; // в текущее слово вставляем только часть битов. остальная часть пойдет в новое слово
+				int code2 = hfc.code >>> len2; // В текущее слово вставляем только часть битов. Остальная часть пойдет в новое слово
 				accum = accum | code2;
 				writeInt(accum); // заполнили слово полностью
 				accum = 0;
@@ -92,7 +96,7 @@ public class HFCompressor
 
 		if(counter > 0) // поток закончился, а еще остались данные в accum, записываем их
 		{
-			accum = accum << Integer.SIZE - counter; // досдвигаем accum так что бы "пустые" биты остались справа а не слева
+			accum = accum << Integer.SIZE - counter; // до-сдвигаем accum так что бы "пустые" биты остались справа, а не слева
 			writeInt(accum);   // записываем весь
 			// корректируем счетчик encoded bytes что бы при раскодировании не возникали лишние байты.
 			int corr = counter % 8 == 0 ? counter/8 : counter/8 + 1;
@@ -106,6 +110,8 @@ public class HFCompressor
 			sout.close();
 			sin.close();
 		}
+
+		logger.exiting(this.getClass().getName(),"compressInternal");
 	}
 	/*
 	private void createIOStreams() throws IOException
