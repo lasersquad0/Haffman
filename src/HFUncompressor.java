@@ -73,8 +73,8 @@ public class HFUncompressor
 
 			if(remaining < Integer.SIZE) // есть остатки с прошлого байта они в data2
 			{
-				data2 <<= (Integer.SIZE - remaining);    // освобождаем место под новые биты
-				int tmp = data >>> remaining;            // готовим новые данные data для соединения с остатками старых
+				data2 <<= (Integer.SIZE - remaining);    // старые биты равняем по левому краю, освобождаем место под новые биты
+				int tmp = data >>> remaining;            // готовим новые данные в data для соединения с остатками старых
 				data2 |= tmp;
 				int tmpRemaining = parseInt(data2); // после вызова у нас есть 2 остатка битов: часть битов data2 и вторая часть это неиспользованные биты в data
 

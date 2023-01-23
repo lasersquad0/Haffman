@@ -42,13 +42,6 @@ public class HFCompressor
 	{
 		encodedBytes = 0;  // сбрасываем счетчик
 		this.tree = tree;
-		//createIOStreams();
-		//tree.build();
-		//fileFormat.CRC32Value = tree.CRC32Value;
-		//byte[] table = tree.getTable();
-		//fileFormat.hfTableSize = (short)table.length;
-		//fileFormat.saveHeader(sout);
-		//sout.write(table);
 		compressInternal();
 	}
 
@@ -67,15 +60,15 @@ public class HFCompressor
 
 			if (counter + hfc.len > Integer.SIZE) // новый byte не влазит в остаток слова, делим на 2 части
 			{
-				accum = accum << Integer.SIZE - counter; // освобождаем сколько осталось места в слове
+				accum = accum << (Integer.SIZE - counter); // освобождаем сколько осталось места в слове
 				int len2 = hfc.len + counter - Integer.SIZE; // кол-во не вмещающихся битов
 				int code2 = hfc.code >>> len2; // В текущее слово вставляем только часть битов. Остальная часть пойдет в новое слово
 				accum = accum | code2;
 				writeInt(accum); // заполнили слово полностью
 				accum = 0;
-				int mask = 0xFFFFFFFF >>> Integer.SIZE - len2;
-				hfc.code &= mask;   // затираем биты которые ранее вставили в предыдущее слово
-				accum = accum | hfc.code;
+				int mask = 0xFFFFFFFF >>> (Integer.SIZE - len2);
+				code2 = hfc.code & mask;   // затираем биты которые ранее вставили в предыдущее слово
+				accum = accum | code2;
 				counter = len2;
 			}
 			else
@@ -96,7 +89,7 @@ public class HFCompressor
 
 		if(counter > 0) // поток закончился, а еще остались данные в accum, записываем их
 		{
-			accum = accum << Integer.SIZE - counter; // до-сдвигаем accum так что бы "пустые" биты остались справа, а не слева
+			accum = accum << (Integer.SIZE - counter); // до-сдвигаем accum так что бы "пустые" биты остались справа, а не слева
 			writeInt(accum);   // записываем весь
 			// корректируем счетчик encoded bytes что бы при раскодировании не возникали лишние байты.
 			int corr = counter % 8 == 0 ? counter/8 : counter/8 + 1;

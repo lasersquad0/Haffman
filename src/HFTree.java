@@ -106,10 +106,10 @@ public class HFTree
 
 		if(!externalStream) sin.close();
 
-		logger.info(String.format("symbols=%s", Arrays.toString(symbols)));
-		logger.info(String.format("weights=%s",Arrays.toString(weights)));
-		logger.info(String.format("min weight=%d, max weight=%d", min, max));
-		logger.info(String.format("nonzero=%d, sum(size)=%d", nonzero, sum));
+		//logger.info(String.format("symbols=%s", Arrays.toString(symbols)));
+		//logger.info(String.format("weights=%s",Arrays.toString(weights)));
+		//logger.info(String.format("min weight=%d, max weight=%d", min, max));
+		//logger.info(String.format("nonzero=%d, sum(size)=%d", nonzero, sum));
 
 		logger.exiting(this.getClass().getName(),"calcWeights");
 	}
@@ -163,7 +163,7 @@ public class HFTree
 		codesList.sort(null); // важно чтобы коды были отсортированы от более короткого к более длиному что бы поиск кодов был быстрее при uncompress
 
 		logger.info(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
-		logger.info(String.format("hfcodes size=%d %s", codesList.size(), codesList));
+		logger.info(String.format("codes size=%d %s", codesList.size(), codesList));
 
 		logger.exiting(this.getClass().getName(),"calcCodes");
 	}
@@ -186,7 +186,6 @@ public class HFTree
 
 			maxCodeLen = Math.max(maxCodeLen, code.length());
 			minCodeLen = Math.min(minCodeLen, code.length());
-
 		}
 	}
 
@@ -224,6 +223,7 @@ public class HFTree
 
 			HFCode hfc = new HFCode(ch, code, len, "");
 			codesMap.put(ch, hfc);
+
 			codesList.add(hfc);
 
 			maxCodeLen = Math.max(maxCodeLen, len);
