@@ -1,3 +1,5 @@
+import java.io.InputStream;
+import java.io.OutputStream;
 
 class HFNode implements Comparable<HFNode>
 {

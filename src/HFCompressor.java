@@ -15,6 +15,7 @@ public class HFCompressor
 	InputStream sin;         // stream with data to compress
 	OutputStream sout;       // stream with compressed data
 	public long encodedBytes = 0;
+	public byte lastBits = 0;
 
 
 /*	public HFCompressor(String filename)
@@ -40,7 +41,8 @@ public class HFCompressor
 
 	public void compress(HFTree tree) throws IOException
 	{
-		encodedBytes = 0;  // сбрасываем счетчик
+		encodedBytes = 0;  // сбрасываем счетчики
+		lastBits = 0;
 		this.tree = tree;
 		compressInternal();
 	}
@@ -94,6 +96,7 @@ public class HFCompressor
 			// корректируем счетчик encoded bytes что бы при раскодировании не возникали лишние байты.
 			int corr = counter % 8 == 0 ? counter/8 : counter/8 + 1;
 			encodedBytes = encodedBytes - 4 + corr;
+			lastBits = (byte)counter;
 		}
 
 		sout.flush();
@@ -106,33 +109,6 @@ public class HFCompressor
 
 		logger.exiting(this.getClass().getName(),"compressInternal");
 	}
-	/*
-	private void createIOStreams() throws IOException
-	{
-		File inFile = new File(INPUT_FILENAME);
-		FILE_BUFFER = (inFile.length() < MAX_BUF_SIZE) ? (int) inFile.length() : MAX_BUF_SIZE;
-
-		sin = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER);
-		sout = new BufferedOutputStream(new FileOutputStream(ARCHIVE_FILENAME), FILE_BUFFER);
-
-		// для tree открываем ДРУГОЙ поток потому что дереву нужно его пройти полностью при создании весов кодов.
-		//tree = new HFTree(new BufferedInputStream(new FileInputStream(INPUT_FILENAME), FILE_BUFFER));
-
-		//fileFormat = new HFFileFormat();
-		//fileFormat.fileSizeUncomp = inFile.length();
-	}
-*/
-
-/*	private void writeBytes(int v, int num) throws IOException
-	{
-		writeBuffer[0] = (byte)(v >>> 24);
-		writeBuffer[1] = (byte)(v >>> 16);
-		writeBuffer[2] = (byte)(v >>>  8);
-		writeBuffer[3] = (byte)(v >>>  0);
-		sout.write(writeBuffer, 0, num);
-		encodedBytes += num;
-	}
-*/
 
 	private void writeInt(int v) throws IOException
 	{

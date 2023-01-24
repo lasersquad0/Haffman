@@ -6,18 +6,15 @@ import java.util.zip.CRC32;
 public class HFTree
 {
 	private final static Logger logger = Logger.getLogger("HFLogger");
-	private int[] symbols; // all symbols that are used in input file
-	private int[] weights;  //  weights of symbols above
-	private HFNode treeRoot;
+	protected  int[] symbols; // all symbols that are used in input file
+	protected int[] weights;  //  weights of symbols above
+	protected HFNode treeRoot;
 	ArrayList<HFCode> codesList = new ArrayList<>();
-	//ArrayList<String> codesStrList = new ArrayList<>(); // просто список String кодов, номера индексов совпадают с номерами индексов codesList.
 	HashMap<Integer,HFCode> codesMap = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
 	int minCodeLen = Integer.MAX_VALUE;
 	int maxCodeLen;
 	private final InputStream sin;
 	private final boolean externalStream;
-//	private String FILENAME_FOR_WEIGHTS;
-	private final int MAX_BUF_SIZE = 100_000_000;
 	private final int tableRecSize = 6; // размер одной записи таблицы кодов хаффмана (6=byte+int+byte)
 	long CRC32Value;  // высчитывается в вызове calcWeights() вместе с весами
 
@@ -46,25 +43,18 @@ public class HFTree
 	 * *** Внимание - портит InputStream sin, передвигает его на конец файла *****
 	 * @throws IOException если что-то произошло с потоком
 	 */
-	private void calcWeights() throws IOException
+	protected void calcWeights() throws IOException
 	{
 		logger.entering(this.getClass().getName(),"calcWeights");
 
-		int FILE_BUFFER = MAX_BUF_SIZE; // если дали поток, то мы не знаем размер файла читаем кусками по MAX_BUF_SIZE (100М) тогда
+		int BUF_SIZE = 100_000_000;  // если дали поток, то мы не знаем размер файла читаем кусками по BUF_SIZE (100М) тогда
 
-/*		if(sin == null) // если не дали поток значит есть имя файла, создаем поток из имени файла
-		{
-			File inFile = new File(FILENAME_FOR_WEIGHTS);
-			FILE_BUFFER = (inFile.length() < MAX_BUF_SIZE) ? (int) inFile.length() : MAX_BUF_SIZE;
-
-			sin = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER);
-		}
-*/
 		int[] freq = new int[256];
-		byte[] buffer = new byte[FILE_BUFFER];
+		byte[] buffer = new byte[BUF_SIZE];
 		CRC32 cc = new CRC32();
 
 		int cntRead;
+
 		do
 		{
 			cntRead = sin.read(buffer);
@@ -75,7 +65,7 @@ public class HFTree
 			for (int i = 0; i < cntRead; i++)
 				freq[Byte.toUnsignedInt(buffer[i])]++; // обходим знаковость байта
 
-		}while(cntRead == FILE_BUFFER);
+		}while(cntRead == BUF_SIZE);
 
 		CRC32Value = cc.getValue(); // сохраняем значение CRC32 для последующего использования
 
@@ -106,17 +96,22 @@ public class HFTree
 
 		if(!externalStream) sin.close();
 
-		//logger.info(String.format("symbols=%s", Arrays.toString(symbols)));
-		//logger.info(String.format("weights=%s",Arrays.toString(weights)));
-		//logger.info(String.format("min weight=%d, max weight=%d", min, max));
-		//logger.info(String.format("nonzero=%d, sum(size)=%d", nonzero, sum));
+		logger.fine(String.format("symbols=%s", Arrays.toString(symbols)));
+		logger.fine(String.format("weights=%s",Arrays.toString(weights)));
+		logger.fine(String.format("min weight=%d, max weight=%d", min, max));
+		logger.fine(String.format("nonzero=%d, sum(size)=%d", nonzero, sum));
 
 		logger.exiting(this.getClass().getName(),"calcWeights");
 	}
 
-	private void buildTree()
+	protected void buildTree()
 	{
 		logger.entering(this.getClass().getName(),"buildTree");
+
+		assert symbols != null;
+		assert weights !=null;
+		assert weights.length > 0;
+		assert symbols.length > 0;
 
 		var nodes = new ArrayList<HFNode>();
 		for (int i = 0; i < symbols.length; i++)
@@ -124,43 +119,53 @@ public class HFTree
 			nodes.add(new HFNode(weights[i], (char)symbols[i]));
 		}
 
-		//Comparator<HFNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
-		nodes.sort(null);
-
-		do
+		if(nodes.size() > 1) // бывают случаи когда файл заполнен одним символом тогда дерево будет состоять из одного узла.
 		{
-			HFNode left = nodes.remove(0);
-			HFNode right = nodes.remove(0);
-			HFNode joint = new HFNode(left, right, left.weight + right.weight, left.symbol); //для НЕ листьев symbol не используется и не имеет значения
+			//Comparator<HFNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
+			nodes.sort(null);
 
-			boolean added = false;
-			for (int i = 0; i < nodes.size(); i++)  // TODO можно оптимизировать если использовать Collections.binarySearch(nodes,joint);
+			do
 			{
-				if (nodes.get(i).weight >= joint.weight)
-				{
-					nodes.add(i, joint);
-					added = true;
-					break;
-				}
-			}
-			if (!added)
-				nodes.add(nodes.size(), joint);
+				HFNode left = nodes.remove(0);
+				HFNode right = nodes.remove(0);
+				HFNode joint = new HFNode(left, right, left.weight + right.weight, left.symbol); //для НЕ листьев symbol не используется и не имеет значения
 
-		}while(nodes.size() != 1);
+				boolean added = false;
+				for (int i = 0; i < nodes.size(); i++)  // TODO можно оптимизировать если использовать Collections.binarySearch(nodes,joint);
+				{
+					if (nodes.get(i).weight >= joint.weight)
+					{
+						nodes.add(i, joint);
+						added = true;
+						break;
+					}
+				}
+				if (!added)
+					nodes.add(nodes.size(), joint);
+
+			} while (nodes.size() != 1);
+		}
 
 		treeRoot = nodes.get(0);
 
 		logger.exiting(this.getClass().getName(),"buildTree");
 	}
 
-	private void calcCodes()
+	protected void calcCodes()
 	{
 		logger.entering(this.getClass().getName(),"calcCodes");
 
-		calcCodesRecc(treeRoot.leftNode,"0");
-		calcCodesRecc(treeRoot.rightNode,"1");
+		if((treeRoot.leftNode == null) && (treeRoot.rightNode == null)) // we have only one node in the tree
+		{
+			calcCodesRecc(treeRoot, "0");
+		}
+		else
+		{
+			calcCodesRecc(treeRoot.leftNode, "0");
+			calcCodesRecc(treeRoot.rightNode, "1");
+			codesList.sort(null); // важно чтобы коды были отсортированы от более короткого к более длиному что бы поиск кодов был быстрее при uncompress
+		}
 
-		codesList.sort(null); // важно чтобы коды были отсортированы от более короткого к более длиному что бы поиск кодов был быстрее при uncompress
 
 		logger.info(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
 		logger.info(String.format("codes size=%d %s", codesList.size(), codesList));

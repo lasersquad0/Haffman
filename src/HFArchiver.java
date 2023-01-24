@@ -8,57 +8,71 @@ public class HFArchiver
 	private static final String HF_ARCHIVE_EXT = ".hf";
 	HFTree tree;
 
-
-	public void compressFile(String filename) throws IOException
+	protected void compressFileInternal(InputStream inTree, HFFileData fileData) throws IOException
 	{
-		logger.info(String.format("Analysing file '%s', calc weights, building HF table.",filename));
+		logger.info(String.format("Analysing file '%s', calc weights, building HF table.", fileData.fnUncompressed));
 
-		File inFile = new File(filename);
-		long fileLen = inFile.length();
-		int FILE_BUFFER = (fileLen < MAX_BUF_SIZE) ? (int) fileLen : MAX_BUF_SIZE;
-		InputStream sin = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER); // stream только для подсчета весов и далее построения дерева Хаффмана
-
-		tree = new HFTree(sin);
+		tree = new HFTree(inTree);
 		tree.build();
 		byte[] table = tree.getTable();
-
-		sin.close();
+		inTree.close();
 
 		logger.info("Analysis finished. HF table is build.");
 
-		HFFileFormat fileFormat = new HFFileFormat();
-		fileFormat.filenameUncomp = filename;
-		fileFormat.fileSizeUncomp = fileLen;
-		fileFormat.CRC32Value = tree.CRC32Value;
-		fileFormat.hfTableSize = (short)table.length;
-
-		String acrFilename = filename.substring(0, filename.lastIndexOf(".")) + HF_ARCHIVE_EXT;
-		sin = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER);
-		OutputStream sout = new BufferedOutputStream(new FileOutputStream(acrFilename), FILE_BUFFER);
-
-		fileFormat.saveHeader(sout);
-		sout.write(table);
+		fileData.CRC32Value = tree.CRC32Value;
+		fileData.tableSize = (short)table.length;
+		fileData.saveHeader();
+		fileData.sout.write(table);
 
 		logger.info("Starting data compression...");
 
-		HFCompressor c = new HFCompressor(sin, sout);
+		HFCompressor c = new HFCompressor(fileData.sin, fileData.sout);
 		c.compress(tree);
-
-		sout.close();
-		sin.close();
-
-		// записываем в архив размер закодированого файла в байтах
-		RandomAccessFile raf = new RandomAccessFile(new File(acrFilename), "rw");
-		raf.seek(fileFormat.encodedDataSizePos());
-		raf.writeLong(c.encodedBytes);
-		raf.close();
+		fileData.sout.flush();
+		fileData.fzCompressed = c.encodedBytes;
+		fileData.lastBits = c.lastBits;
 
 		logger.info("Compression finished.");
+
+	}
+
+	public void compressFile(String filename) throws IOException
+	{
+		File inFile = new File(filename);
+		long fileLen = inFile.length();
+		int FILE_BUFFER = (fileLen < MAX_BUF_SIZE) ? (int) fileLen : MAX_BUF_SIZE;
+		InputStream sin1 = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER); // stream только для подсчета весов и далее построения дерева Хаффмана
+
+		String acrFilename = filename.substring(0, filename.lastIndexOf(".")) + HF_ARCHIVE_EXT;
+		InputStream sin2 = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER);
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(acrFilename), FILE_BUFFER);
+
+		HFFileData fileData = new HFFileData();
+		fileData.fnUncompressed = filename;
+		fileData.fzUncompressed = fileLen;
+		fileData.fnCompressed = acrFilename;
+		fileData.sin = sin2;
+		fileData.sout = sout;
+//		fileData.CRC32Value = tree.CRC32Value;
+//		fileData.hfTableSize = (short)table.length;
+
+		compressFileInternal(sin1, fileData);
+
+		sout.close();
+		sin2.close();
+		sin1.close();
+
+		// записываем в архив размер закодированного файла в байтах и lastBits
+		RandomAccessFile raf = new RandomAccessFile(new File(acrFilename), "rw");
+		raf.seek(fileData.encodedDataSizePos());
+		raf.writeLong(fileData.fzCompressed);
+		raf.writeByte(fileData.lastBits);
+		raf.close();
 	}
 
 	public void unCompressFile(String arcFilename) throws IOException
 	{
-		logger.log(Level.INFO, "Loading archive file and HF table.");
+		logger.info(String.format("Loading archive file '%s' and HF table.", arcFilename));
 
 		File inFile = new File(arcFilename);
 		long fileLen = inFile.length();
@@ -66,24 +80,27 @@ public class HFArchiver
 
 		InputStream sin = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER);
 
-		HFFileFormat fileFormat = new HFFileFormat();
-		fileFormat.loadHeader(sin);
+		HFFileData fileData = new HFFileData();
+		fileData.sin = sin;
+		fileData.fnCompressed = arcFilename;
+		fileData.loadHeader();
 
 		tree = new HFTree(sin);
-		tree.loadTable(fileFormat.hfTableSize);
+		tree.loadTable(fileData.tableSize);
 
-		logger.log(Level.INFO, "File and HF table are loaded. Starting uncompressing...");
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fileData.fnUncompressed), FILE_BUFFER);
+		fileData.sout = sout;
 
-		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fileFormat.filenameUncomp), FILE_BUFFER);
+		logger.info("File and HF table are loaded.");
+		logger.info("Uncompressing...");
 
-		HFUncompressor uc = new HFUncompressor(sin, sout);
-		uc.uncompress(tree, fileFormat);
+		HFUncompressor uc = new HFUncompressor();
+		uc.uncompress(tree, fileData);
 
 		sout.close();
 		sin.close();
 
-		logger.log(Level.INFO, "Uncompressing is done.");
-
+		logger.info("Uncompressing is done.");
 	}
 
 }
