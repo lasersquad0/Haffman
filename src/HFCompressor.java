@@ -4,13 +4,8 @@ import java.util.logging.Logger;
 public class HFCompressor
 {
 	private final static Logger logger = Logger.getLogger("HFLogger");
-	//final String HF_ARCHIVE_EXT = ".hf";
 	HFTree tree;
 	byte[] writeBuffer = new byte[4];  // буфер для записи int в OutputStream
-	//String INPUT_FILENAME;
-	//String ARCHIVE_FILENAME;
-	//final int MAX_BUF_SIZE = 1_000_000_000; // если файл >1G, то используем буфер этого размера иначе буфер размера файла
-	//int FILE_BUFFER;         // фактический размер буфера для file streams in and out
 	boolean externalStreams; // if false we call close() on streams after finishing compress operation
 	InputStream sin;         // stream with data to compress
 	OutputStream sout;       // stream with compressed data
@@ -18,20 +13,6 @@ public class HFCompressor
 	public byte lastBits = 0;
 
 
-/*	public HFCompressor(String filename)
-	{
-		INPUT_FILENAME = filename;
-		ARCHIVE_FILENAME = getArchiveFilename(INPUT_FILENAME);
-		externalStreams = false;
-	}
-
-	public HFCompressor(String inputFilename, String archiveFilename)
-	{
-		INPUT_FILENAME = inputFilename;
-		ARCHIVE_FILENAME = archiveFilename;
-		externalStreams = false;
-	}
-*/
 	public HFCompressor(InputStream in, OutputStream out)
 	{
 		sin = in;
@@ -57,8 +38,6 @@ public class HFCompressor
 		while ((ch = sin.read()) != -1)
 		{
 			HFCode hfc = tree.codesMap.get(ch);
-			//int code = tree.codes.get(ch);
-			//byte len = tree.codeLen.get(ch);
 
 			if (counter + hfc.len > Integer.SIZE) // новый byte не влазит в остаток слова, делим на 2 части
 			{
@@ -87,8 +66,9 @@ public class HFCompressor
 			}
 		}
 
-		assert counter < 32;
+		assert counter < Integer.SIZE;
 
+		lastBits = Integer.SIZE;
 		if(counter > 0) // поток закончился, а еще остались данные в accum, записываем их
 		{
 			accum = accum << (Integer.SIZE - counter); // до-сдвигаем accum так что бы "пустые" биты остались справа, а не слева
@@ -119,12 +99,7 @@ public class HFCompressor
 		sout.write(writeBuffer, 0, 4);
 		encodedBytes += 4;
 	}
-/*
-	private String getArchiveFilename(String filename)
-	{
-		return filename.substring(0, filename.lastIndexOf(".")) + HF_ARCHIVE_EXT;
-	}
- */
+
 
 }
 

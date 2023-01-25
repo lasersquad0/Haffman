@@ -7,42 +7,10 @@ public class HFUncompressor
 	private final static Logger logger = Logger.getLogger("HFLogger");
 	HFTree tree;
 	HFFileData fileData;
-	//String OUTPUT_FILENAME;
-	//String ARCHIVE_FILENAME;
-	//final int MAX_BUF_SIZE = 1_000_000_000; // если файл >1G, то используем буфер этого размера иначе буфер размера файла
-	//int FILE_BUFFER;         // фактический размер буфера для file streams in and out
-	//boolean externalStreams; // if false we call close() on streams after finishing compress operation
-	//InputStream sin;         // stream with data to compress
-	//OutputStream sout;       // stream with compressed data
 	CRC32 crc = new CRC32();
 	long decodedBytes = 0;
 
 
-	/*
-
-	public HFUncompressor(InputStream in, OutputStream out)
-	{
-		sin = in;
-		sout = out;
-		externalStreams = true;
-	}
-/*
-	private void createIOStreams() throws IOException
-	{
-		if(sin == null)
-		{
-			File inFile = new File(OUTPUT_FILENAME);
-			FILE_BUFFER = (inFile.length() < MAX_BUF_SIZE) ? (int) inFile.length() : MAX_BUF_SIZE;
-
-			sin = new BufferedInputStream(new FileInputStream(inFile), FILE_BUFFER);
-		}
-
-		if(sout == null)
-			sout = new BufferedOutputStream(new FileOutputStream(ARCHIVE_FILENAME), FILE_BUFFER);
-
-		HFTree tree = new HFTree(sin);
-	}
-*/
 	public void uncompress(HFTree tree, HFFileData fileData) throws IOException
 	{
 		decodedBytes = 0;
@@ -53,7 +21,6 @@ public class HFUncompressor
 		long v = crc.getValue();
 		if(fileData.CRC32Value != v)
 			logger.warning(String.format("CRC values are not equal: %d and %d", fileData.CRC32Value, v));
-
 	}
 
 	private void uncompressInternal() throws IOException
@@ -78,12 +45,12 @@ public class HFUncompressor
 			if ((ch1 | ch2 | ch3 | ch4) < 0)
 				break;
 
-			encodedBytes +=4;   // считаем сколько encoded bytes прочитали и потока и сравниваем с размером fileSizeComp
+			encodedBytes +=4;   // считаем сколько encoded bytes прочитали и потока и сравниваем с размером fileSizeComp что бы вовремя остановиться.
 
-			if(encodedBytes > fileData.fzCompressed)
+			if(encodedBytes >= fileData.fzCompressed) // вычитали последний int который нужно парсить не полностью
 			{
+				assert fileData.lastBits <= Integer.SIZE;
 				bitsToParse = fileData.lastBits;
-				logger.info("uncompressInternal LAST PASS!!!");
 			}
 
 			data =  ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
@@ -93,8 +60,9 @@ public class HFUncompressor
 				data2 <<= (i32 - remaining);    // старые биты равняем по левому краю, освобождаем место под новые биты
 				int tmp = data >>> remaining;            // готовим новые данные в data для соединения с остатками старых
 				data2 |= tmp;
-				int tmpRemaining = parseInt(data2, Math.min(remaining + bitsToParse,i32)); // после вызова у нас есть 2 остатка битов: часть битов data2 и вторая часть это неиспользованные биты в data
-				remaining = Math.max(remaining + bitsToParse - i32, 0);
+				int tmpRemaining = parseInt(data2, Math.min(remaining + bitsToParse, i32)); // после вызова у нас есть 2 остатка битов: часть битов data2 и вторая часть это неиспользованные биты в data
+
+				assert ( (remaining + bitsToParse < i32)? (tmpRemaining == 0): true); // если remaining+bitsToParse < i32 то tmpRemaining всегда должен быть == 0
 
 				if(remaining + tmpRemaining > i32) // Остатков может оказаться больше чем вмещает int. Объединяем и раскодируем их
 				{
@@ -108,7 +76,11 @@ public class HFUncompressor
 
 					assert remaining <= i32;
 
-					tmpRemaining = parseInt(data2, i32);
+					tmpRemaining = parseInt(data2, Math.min(remaining+bitsToParse, i32));
+
+					assert (remaining+bitsToParse <= 32) ? tmpRemaining == 0: true;
+
+					remaining = Math.max(remaining + bitsToParse - i32, 0); // вносим поправку не bitsToParse так как оставшиеся биты могут быть пустыми
 				}
 
 				assert remaining <= i32;
@@ -116,13 +88,13 @@ public class HFUncompressor
 				// соединяем остаток битов от parseInt и биты которые не влезли от data
 				data2 <<= remaining;
 				mask = 0xFFFFFFFF >>> (i32 - remaining);
-				data &= mask; //masks[remaining]; // очищаем лишние биты перед объединением байтов.
+				data &= mask;        // очищаем лишние биты перед объединением байтов.
 				data2 |= data;
 				remaining += tmpRemaining;
 
 				if(remaining == i32) // Из остатков набрался целый байт. Записываем его перед чтением следующего
 				{
-					remaining = parseInt(data2, i32);
+					remaining = parseInt(data2);
 				}
 
 				assert (remaining <= i32);
@@ -139,12 +111,17 @@ public class HFUncompressor
 		if((remaining > 0) && (remaining < i32))
 		{
 			data2 <<= (i32 - remaining);
-			remaining = parseInt(data2, Math.min(remaining, bitsToParse));
+			remaining = parseInt(data2, remaining + bitsToParse - i32);
 		}
 
 		fileData.sout.flush();
 
 		logger.exiting(this.getClass().getName(),"uncompressInternal");
+	}
+
+	private int parseInt(int code) throws IOException
+	{
+		return parseInt(code, Integer.SIZE);
 	}
 
 	/**
@@ -154,11 +131,11 @@ public class HFUncompressor
 	 * @return возвращает кол-во не оставшихся нераспаршеных битов в code.
 	 * @throws IOException если при записи в поток, что-то пошло не так
 	 */
-	private int parseInt(int code, int lastBits) throws IOException
+	private int parseInt(int code, int bitsToParse) throws IOException
 	{
-		int remaining = Integer.SIZE;
+		int remaining = bitsToParse;
 		int ccode = code;
-		while(remaining > Math.max(tree.minCodeLen, Integer.SIZE - lastBits))
+		while(remaining > 0 /*Math.max(tree.minCodeLen, Integer.SIZE - bitsToParse)*/)
 		{
 			boolean found = false;
 			for(int i = 0; i < tree.codesList.size(); i++)
@@ -188,7 +165,8 @@ public class HFUncompressor
 
 		}
 
-		return remaining;
+		//assert (remaining - (Integer.SIZE - bitsToParse)) > 0;
+		return remaining;// - (Integer.SIZE - bitsToParse); // возвращаем сколько осталось нераспаршеных битов из bitsToParse а не из всего int.
 	}
 
 	private void writeByte(int v) throws IOException
