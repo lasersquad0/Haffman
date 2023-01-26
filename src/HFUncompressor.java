@@ -165,8 +165,7 @@ public class HFUncompressor
 
 		}
 
-		//assert (remaining - (Integer.SIZE - bitsToParse)) > 0;
-		return remaining;// - (Integer.SIZE - bitsToParse); // возвращаем сколько осталось нераспаршеных битов из bitsToParse а не из всего int.
+		return remaining; // возвращаем сколько осталось нераспаршеных битов из bitsToParse а не из всего int.
 	}
 
 	private void writeByte(int v) throws IOException
