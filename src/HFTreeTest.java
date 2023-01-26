@@ -1,6 +1,5 @@
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,8 +38,15 @@ public class HFTreeTest {
 		HFTree hft = new HFTree(bs);
 
 		hft.calcWeights();
+
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
+		assertNull(hft.treeRoot);
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals(0, hft.codesList.size());
+		assertEquals(0, hft.codesMap.size());
+		assertEquals("CRC32 value does not match.", 1993550816, hft.CRC32Value);
 
 		/*Throwable thrown = assertThrows(IOException.class, () -> {
 			hft.calcWeights();
@@ -59,11 +65,18 @@ public class HFTreeTest {
 
 		hft.calcWeights();
 
-		assertNotNull(hft.symbols); // notnull потому что new int[0] отрабатывает успешно (массив с 0 элементами создается)
+		assertNotNull(hft.symbols); // Оба notnull потому что new int[0] отрабатывает успешно (массив с 0 элементами создается)
 		assertNotNull(hft.weights);
+		assertNull(hft.treeRoot);
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals(0, hft.codesList.size());
+		assertEquals(0, hft.codesMap.size());
+		assertEquals("CRC32 value does not match.", 0, hft.CRC32Value);
+
 	}
 	@Test
-	public void calcWeights2() throws IOException
+	public void calcWeights2()
 	{
 		// Эмулируем пустой файл. 0 байт длиной.
 		byte[] buf = {};
@@ -72,6 +85,13 @@ public class HFTreeTest {
 
 		assertNull(hft.symbols);
 		assertNull(hft.weights);
+		assertNull(hft.treeRoot);
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals(0, hft.codesList.size());
+		assertEquals(0, hft.codesMap.size());
+		assertEquals("CRC32 value does not match.", 0, hft.CRC32Value);
+
 		/*Throwable thrown = assertThrows(AssertionError.class, () -> {
 			hft.calcWeights();
 		});
@@ -91,16 +111,25 @@ public class HFTreeTest {
 
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
+
+		// эталонные значения для строки выше
 		int[] a = {44, 48, 49, 50, 51, 52, 53, 55, 56, 57};
 		int[] b = {15, 154, 15, 21, 5, 3, 1, 5, 1, 5};
-		assertTrue("Symbols aray is incorrect.", Arrays.equals(hft.symbols, a));
-		assertTrue("Weights aray is incorrect.", Arrays.equals(hft.weights, b));
+
+		assertArrayEquals("Symbols aray is incorrect.", a, hft.symbols);
+		assertArrayEquals("Weights aray is incorrect.", b, hft.weights);
 		assertEquals("CRC32 value does not match.", 2086686246, hft.CRC32Value);
+		assertNull(hft.treeRoot);
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals(0, hft.codesList.size());
+		assertEquals(0, hft.codesMap.size());
 	}
 
 	@Test
 	public void buildTree1()
 	{
+		// Эмулируем пустой файл. 0 байт длиной.
 		byte[] buf = {};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
 		HFTree hft = new HFTree(bs);
@@ -115,6 +144,7 @@ public class HFTreeTest {
 	@Test
 	public void buildTree11() throws IOException
 	{
+		// Эмулируем пустой файл. 0 байт длиной.
 		byte[] buf = {};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
 		HFTree hft = new HFTree(bs);
@@ -125,6 +155,13 @@ public class HFTreeTest {
 		assertEquals(0, hft.symbols.length);
 		assertEquals(0, hft.weights.length);
 
+		assertNull(hft.treeRoot);
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals(0, hft.codesList.size());
+		assertEquals(0, hft.codesMap.size());
+		assertEquals("CRC32 value does not match.", 0, hft.CRC32Value);
+
 		Throwable thrown = assertThrows(AssertionError.class, () -> {
 			hft.buildTree();
 		});
@@ -134,7 +171,7 @@ public class HFTreeTest {
 	@Test
 	public void buildTree2() throws IOException
 	{
-		byte[] buf = {'f'};
+		byte[] buf = {'G'};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
 		HFTree hft = new HFTree(bs);
 
@@ -151,6 +188,12 @@ public class HFTreeTest {
 		assertNotNull(hft.weights);
 		assertEquals(1, hft.symbols.length);
 		assertEquals(1, hft.weights.length);
+
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals(0, hft.codesList.size());
+		assertEquals(0, hft.codesMap.size());
+		assertEquals("CRC32 value does not match.", 985283518, hft.CRC32Value);
 	}
 
 	@Test
@@ -171,5 +214,42 @@ public class HFTreeTest {
 		assertEquals(1, hft.codesList.size());
 		assertEquals(1, hft.codesMap.size());
 
+		assertEquals(1, hft.maxCodeLen);
+		assertEquals(1, hft.minCodeLen);
+		assertEquals("CRC32 value does not match.", 1082872042, hft.CRC32Value);
+
+	}
+
+	@Test
+	public void buildTree4() throws IOException
+	{
+		byte[] buf = {'/', '/'};
+		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
+		HFTree hft = new HFTree(bs);
+
+		hft.calcWeights();
+
+		assertNotNull(hft.symbols);
+		assertNotNull(hft.weights);
+		assertEquals(1, hft.symbols.length);
+		assertEquals(1, hft.weights.length);
+		assertNull(hft.treeRoot);
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals(0, hft.codesList.size());
+		assertEquals(0, hft.codesMap.size());
+		assertEquals("CRC32 value does not match.", 4162066379L, hft.CRC32Value);
+
+		hft.buildTree();
+
+		assertNotNull(hft.treeRoot);
+		assertNotNull(hft.symbols);
+		assertNotNull(hft.weights);
+		assertEquals(1, hft.symbols.length);
+		assertEquals(1, hft.weights.length);
+
+		assertEquals(0, hft.maxCodeLen);
+		assertEquals(Integer.MAX_VALUE, hft.minCodeLen);
+		assertEquals("CRC32 value does not match.", 4162066379L, hft.CRC32Value);
 	}
 }
