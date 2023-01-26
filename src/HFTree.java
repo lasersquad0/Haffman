@@ -11,8 +11,8 @@ public class HFTree
 	protected HFNode treeRoot;
 	ArrayList<HFCode> codesList = new ArrayList<>();
 	HashMap<Integer,HFCode> codesMap = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
-	int minCodeLen = Integer.MAX_VALUE;
-	int maxCodeLen;
+	int minCodeLen = Integer.MAX_VALUE; // TODO Кандидат на выброс потому что нигде в алгоритмах сейчас не используется. Ранее использовалось в декодировании
+	int maxCodeLen;     // TODO Кандидат на выброс потому что нигде в алгоритмах сейчас не используется. Ранее использовалось в декодировании
 	private final InputStream sin;
 	private final boolean externalStream;
 	private final int tableRecSize = 6; // размер одной записи таблицы кодов хаффмана (6=byte+int+byte)
@@ -24,12 +24,6 @@ public class HFTree
 		externalStream = true;
 	}
 
-/*	public HFTree(String filename)
-	{
-		FILENAME_FOR_WEIGHTS = filename;
-		externalStream = false;
-	}
-*/
 	public void build() throws IOException
 	{
 		calcWeights();
@@ -161,14 +155,15 @@ public class HFTree
 		}
 		else
 		{
+			assert treeRoot.leftNode != null;
 			calcCodesRecc(treeRoot.leftNode, "0");
 			calcCodesRecc(treeRoot.rightNode, "1");
 			codesList.sort(null); // важно чтобы коды были отсортированы от более короткого к более длиному что бы поиск кодов был быстрее при uncompress
 		}
 
 
-		logger.info(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
-		logger.info(String.format("codes size=%d %s", codesList.size(), codesList));
+		logger.fine(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
+		logger.fine(String.format("codes size=%d %s", codesList.size(), codesList));
 
 		logger.exiting(this.getClass().getName(),"calcCodes");
 	}
@@ -239,8 +234,8 @@ public class HFTree
 
 		codesList.sort(null);
 
-		logger.info(String.format("codes size=%d %s", codesList.size(), codesList));
-		logger.info(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
+		logger.fine(String.format("codes size=%d %s", codesList.size(), codesList));
+		logger.fine(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
 	}
 
 }
