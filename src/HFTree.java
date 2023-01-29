@@ -13,31 +13,25 @@ public class HFTree
 	HashMap<Integer,HFCode> codesMap = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
 	int minCodeLen = Integer.MAX_VALUE; // TODO Кандидат на выброс потому что нигде в алгоритмах сейчас не используется. Ранее использовалось в декодировании
 	int maxCodeLen;     // TODO Кандидат на выброс потому что нигде в алгоритмах сейчас не используется. Ранее использовалось в декодировании
-	private final InputStream sin;
-	private final boolean externalStream;
+	//	private final InputStream sin;
 	private final int tableRecSize = 6; // размер одной записи таблицы кодов хаффмана (6=byte+int+byte)
 	long CRC32Value;  // высчитывается в вызове calcWeights() вместе с весами
 
-	public HFTree(InputStream in)
-	{
-		sin = in;
-		externalStream = true;
-	}
 
-	public void build() throws IOException
+	public void buildFromStream(InputStream sin) throws IOException
 	{
-		calcWeights();
-		buildTree();
+		calcWeights(sin); // calculates CRC32 as well
+		buildTreeInternal();
 		calcCodes();
 	}
 
 	/**
-	 * Читает весь файл и считает частоу встречаемости байтов в нем
+	 * Читает весь файл и считает частоты встречаемости байтов в нем
 	 * Для binary files считает частоты тоже корректно.
 	 * *** Внимание - портит InputStream sin, передвигает его на конец файла *****
 	 * @throws IOException если что-то произошло с потоком
 	 */
-	protected void calcWeights() throws IOException
+	protected void calcWeights(InputStream sin) throws IOException
 	{
 		logger.entering(this.getClass().getName(),"calcWeights");
 
@@ -88,8 +82,6 @@ public class HFTree
 			}
 		}
 
-		if(!externalStream) sin.close();
-
 		logger.fine(String.format("symbols=%s", Arrays.toString(symbols)));
 		logger.fine(String.format("weights=%s",Arrays.toString(weights)));
 		logger.fine(String.format("min weight=%d, max weight=%d", min, max));
@@ -98,7 +90,7 @@ public class HFTree
 		logger.exiting(this.getClass().getName(),"calcWeights");
 	}
 
-	protected void buildTree()
+	protected void buildTreeInternal()
 	{
 		logger.entering(this.getClass().getName(),"buildTree");
 
@@ -189,7 +181,7 @@ public class HFTree
 		}
 	}
 
-	public byte[] getTable()
+	private byte[] getTable()
 	{
 		byte[] buffer = new byte[tableRecSize* codesList.size()];  // byte + int + byte = 6
 
@@ -211,15 +203,25 @@ public class HFTree
 		return buffer;
 	}
 
-	public void loadTable(int tableSize) throws IOException
+	public void saveTable(OutputStream sout) throws IOException
 	{
-		var dis = new DataInputStream(sin);
+		var dout = new DataOutputStream(sout);
+		byte[] buf = getTable();
+		dout.writeShort(buf.length);   // writing table size before actual table
+		dout.write(buf);
+	}
+
+	public void loadTable(InputStream sin) throws IOException
+	{
+		var din = new DataInputStream(sin);
+
+		int tableSize = din.readShort(); // 2 bytes is enough because max table size can be 6*255=1530 bytes
 
 		while(tableSize > 0)
 		{
-			int ch = dis.readByte();
-			int code = dis.readInt();
-			byte len = dis.readByte();
+			int ch = din.readByte();
+			int code = din.readInt();
+			byte len = din.readByte();
 
 			HFCode hfc = new HFCode(ch, code, len, "");
 			codesMap.put(ch, hfc);

@@ -6,27 +6,28 @@ public class HFUncompressor
 {
 	private final static Logger logger = Logger.getLogger("HFLogger");
 	HFTree tree;
-	HFFileData fileData;
+	HFUncompressData uData;
 	CRC32 crc = new CRC32();
 	long decodedBytes = 0;
 
 
-	public void uncompress(HFTree tree, HFFileData fileData) throws IOException
+	public void uncompress(HFTree tree, HFUncompressData uData) throws IOException
 	{
 		decodedBytes = 0;
 		this.tree = tree;
-		this.fileData = fileData;
+		this.uData = uData;
+
 		uncompressInternal();
 
-		long v = crc.getValue();
-		if(fileData.CRC32Value != v)
-			logger.warning(String.format("CRC values are not equal: %d and %d", fileData.CRC32Value, v));
+		uData.CRC32Value = crc.getValue();
 	}
 
 	private void uncompressInternal() throws IOException
 	{
 		logger.entering(this.getClass().getName(),"uncompressInternal");
 
+		long threshold = 0;
+		long delta = uData.sizeCompressed/100;
 		final int i32 = Integer.SIZE; // просто для удобства чтения
 		int bitsToParse = i32;
 		long encodedBytes = 0;
@@ -35,22 +36,28 @@ public class HFUncompressor
 		int data2 = 0;
 		int remaining = Integer.SIZE;
 
-		while (encodedBytes < fileData.fzCompressed) // заканчиваем раскодировать как только кончились байты
+		while (encodedBytes < uData.sizeCompressed) // заканчиваем раскодировать как только кончились байты
 		{
+			if(encodedBytes > threshold)
+			{
+				threshold +=delta;
+				uData.cb.uncompressPercent((int)(100*threshold/uData.sizeCompressed));
+			}
+
 			// вот так хитро читаем int из потока
-			int ch1 = fileData.sin.read();
-			int ch2 = fileData.sin.read();
-			int ch3 = fileData.sin.read();
-			int ch4 = fileData.sin.read();
+			int ch1 = uData.sin.read();
+			int ch2 = uData.sin.read();
+			int ch3 = uData.sin.read();
+			int ch4 = uData.sin.read();
 			if ((ch1 | ch2 | ch3 | ch4) < 0)
 				break;
 
 			encodedBytes +=4;   // считаем сколько encoded bytes прочитали и потока и сравниваем с размером fileSizeComp что бы вовремя остановиться.
 
-			if(encodedBytes >= fileData.fzCompressed) // вычитали последний int который нужно парсить не полностью
+			if(encodedBytes >= uData.sizeCompressed) // вычитали последний int который нужно парсить не полностью
 			{
-				assert fileData.lastBits <= Integer.SIZE;
-				bitsToParse = fileData.lastBits;
+				assert uData.lastBits <= Integer.SIZE;
+				bitsToParse = uData.lastBits;
 			}
 
 			data =  ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
@@ -114,7 +121,7 @@ public class HFUncompressor
 			remaining = parseInt(data2, remaining + bitsToParse - i32);
 		}
 
-		fileData.sout.flush();
+		uData.sout.flush();
 
 		logger.exiting(this.getClass().getName(),"uncompressInternal");
 	}
@@ -170,7 +177,7 @@ public class HFUncompressor
 
 	private void writeByte(int v) throws IOException
 	{
-		fileData.sout.write(v);
+		uData.sout.write(v);
 		crc.update(v);
 		decodedBytes++;
 	}

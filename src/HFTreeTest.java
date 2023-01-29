@@ -35,9 +35,9 @@ public class HFTreeTest {
 		// Эмулируем файл длиной сего 1 байт
 		byte[] buf = {'f'};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
-		hft.calcWeights();
+		hft.calcWeights(bs);
 
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
@@ -61,9 +61,9 @@ public class HFTreeTest {
 		// Эмулируем пустой файл. 0 байт длиной.
 		byte[] buf = {};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
-		hft.calcWeights();
+		hft.calcWeights(bs);
 
 		assertNotNull(hft.symbols); // Оба notnull потому что new int[0] отрабатывает успешно (массив с 0 элементами создается)
 		assertNotNull(hft.weights);
@@ -81,7 +81,7 @@ public class HFTreeTest {
 		// Эмулируем пустой файл. 0 байт длиной.
 		byte[] buf = {};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
 		assertNull(hft.symbols);
 		assertNull(hft.weights);
@@ -105,9 +105,9 @@ public class HFTreeTest {
 		String s = "20000000000021,20000000000041,20000000000089,20000000000111,20000000000117,20000000000119,20000000000129,20000000000143,20000000000147,20000000000207,20000000000213,20000000000219,20000000000257,20000000000317,20000000000339,";
 		byte[] buf = s.getBytes();
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
-		hft.calcWeights();
+		hft.calcWeights(bs);
 
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
@@ -116,8 +116,8 @@ public class HFTreeTest {
 		int[] a = {44, 48, 49, 50, 51, 52, 53, 55, 56, 57};
 		int[] b = {15, 154, 15, 21, 5, 3, 1, 5, 1, 5};
 
-		assertArrayEquals("Symbols aray is incorrect.", a, hft.symbols);
-		assertArrayEquals("Weights aray is incorrect.", b, hft.weights);
+		assertArrayEquals("Symbols array is incorrect.", a, hft.symbols);
+		assertArrayEquals("Weights array is incorrect.", b, hft.weights);
 		assertEquals("CRC32 value does not match.", 2086686246, hft.CRC32Value);
 		assertNull(hft.treeRoot);
 		assertEquals(0, hft.maxCodeLen);
@@ -132,10 +132,10 @@ public class HFTreeTest {
 		// Эмулируем пустой файл. 0 байт длиной.
 		byte[] buf = {};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
 		Throwable thrown = assertThrows(AssertionError.class, () -> {
-			hft.buildTree();
+			hft.buildTreeInternal();
 		});
 		//assertNotNull(thrown.getMessage());
 
@@ -147,9 +147,9 @@ public class HFTreeTest {
 		// Эмулируем пустой файл. 0 байт длиной.
 		byte[] buf = {};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
-		hft.calcWeights();
+		hft.calcWeights(bs);
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
 		assertEquals(0, hft.symbols.length);
@@ -163,7 +163,7 @@ public class HFTreeTest {
 		assertEquals("CRC32 value does not match.", 0, hft.CRC32Value);
 
 		Throwable thrown = assertThrows(AssertionError.class, () -> {
-			hft.buildTree();
+			hft.buildTreeInternal();
 		});
 		//assertNotNull(thrown.getMessage());
 
@@ -173,15 +173,15 @@ public class HFTreeTest {
 	{
 		byte[] buf = {'G'};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
-		hft.calcWeights();
+		hft.calcWeights(bs);
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
 		assertEquals(1, hft.symbols.length);
 		assertEquals(1, hft.weights.length);
 
-		hft.buildTree();
+		hft.buildTreeInternal();
 
 		assertNotNull(hft.treeRoot);
 		assertNotNull(hft.symbols);
@@ -201,9 +201,9 @@ public class HFTreeTest {
 	{
 		byte[] buf = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
-		hft.build();
+		hft.buildFromStream(bs);
 
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
@@ -225,9 +225,9 @@ public class HFTreeTest {
 	{
 		byte[] buf = {'/', '/'};
 		ByteArrayInputStream bs = new ByteArrayInputStream(buf);
-		HFTree hft = new HFTree(bs);
+		HFTree hft = new HFTree();
 
-		hft.calcWeights();
+		hft.calcWeights(bs);
 
 		assertNotNull(hft.symbols);
 		assertNotNull(hft.weights);
@@ -240,7 +240,7 @@ public class HFTreeTest {
 		assertEquals(0, hft.codesMap.size());
 		assertEquals("CRC32 value does not match.", 4162066379L, hft.CRC32Value);
 
-		hft.buildTree();
+		hft.buildTreeInternal();
 
 		assertNotNull(hft.treeRoot);
 		assertNotNull(hft.symbols);

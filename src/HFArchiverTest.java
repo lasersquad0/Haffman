@@ -107,17 +107,26 @@ public class HFArchiverTest {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream out = new ByteArrayOutputStream(s.length());
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(in1);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "д";
+		fd.sizeUncompressed = fd.fnameUncompressed.length();
+		fd.fnameCompressed = "r";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(out);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sout = out;
-		fd.sin = in2;
-		fd.fnUncompressed = "д";
-		fd.fzUncompressed = fd.fnUncompressed.length();
-		fd.fnCompressed = "r";
-		ar.compressFileInternal(in1, fd);
+		HFCompressData cData = new HFCompressData(in2, out);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(156, s.length());
-		assertEquals(56, fd.fzCompressed);
+		assertEquals(56, fd.sizeCompressed);
 		assertEquals(135, out.size());
 		assertEquals(26, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
@@ -133,19 +142,28 @@ public class HFArchiverTest {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream out = new ByteArrayOutputStream(s.length());
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(in1);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "]";
+		fd.sizeUncompressed = fd.fnameUncompressed.length();
+		fd.fnameCompressed = "[";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(out);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sout = out;
-		fd.sin = in2;
-		fd.fnUncompressed = "]";
-		fd.fzUncompressed = fd.fnUncompressed.length();
-		fd.fnCompressed = "[";
-		ar.compressFileInternal(in1, fd);
+		HFCompressData cData = new HFCompressData(in2, out);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(1, s.length());
-		assertEquals(1, fd.fzCompressed);
-		assertEquals("[", fd.fnCompressed);
-		assertEquals("]", fd.fnUncompressed);
+		assertEquals(1, fd.sizeCompressed);
+		assertEquals("[", fd.fnameCompressed);
+		assertEquals("]", fd.fnameUncompressed);
 		assertEquals(47, out.size());
 		assertEquals(1, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
@@ -162,48 +180,55 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "m";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "e";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = "m";
-		fd.fnCompressed = "e";
-		ar.compressFileInternal(inForTree, fd);
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(157, s.length());
-		assertEquals(56, fd.fzCompressed);
+		assertEquals(56, fd.sizeCompressed);
 		assertEquals(135, outForCompress.size());
 		assertEquals(28, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 
-		byte[] arr = outForCompress.toByteArray();
-		ByteArrayInputStream in3 = new ByteArrayInputStream(arr);
+		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals("e", fd.fnCompressed);
-		assertEquals("m", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("e", fd.fnameCompressed);
+		assertEquals("m", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -218,18 +243,27 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
-		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = "z";
-		fd.fnCompressed = "/";
-		ar.compressFileInternal(inForTree, fd);
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
 
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "z";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "/";
+		fd.CRC32Value = tree.CRC32Value;
+
+		fd.saveHeader(outForCompress);
+
+		HFArchiver ar = new HFArchiver();
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(155, s.length());
-		assertEquals(55, fd.fzCompressed);
+		assertEquals(55, fd.sizeCompressed);
 		assertEquals(135, outForCompress.size());
 		assertEquals(22, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
@@ -241,26 +275,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals("/", fd.fnCompressed);
-		assertEquals("z", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("/", fd.fnameCompressed);
+		assertEquals("z", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -274,18 +307,27 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "1";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "2";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = "1";
-		fd.fnCompressed = "2";
-		ar.compressFileInternal(inForTree, fd);
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 
 		assertEquals(109, s.length());
-		assertEquals(14, fd.fzCompressed);
+		assertEquals(14, fd.sizeCompressed);
 		assertEquals(59, outForCompress.size());
 		assertEquals(13, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
@@ -298,26 +340,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals("2", fd.fnCompressed);
-		assertEquals("1", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("2", fd.fnameCompressed);
+		assertEquals("1", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -332,18 +373,26 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
-		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = "1";
-		fd.fnCompressed = "2";
-		ar.compressFileInternal(inForTree, fd);
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
 
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "1";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "2";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
+		HFArchiver ar = new HFArchiver();
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(137, s.length());
-		assertEquals(18, fd.fzCompressed);
+		assertEquals(18, fd.sizeCompressed);
 		assertEquals(69, outForCompress.size());
 		assertEquals(9, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
@@ -356,26 +405,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals("2", fd.fnCompressed);
-		assertEquals("1", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("2", fd.fnameCompressed);
+		assertEquals("1", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -390,50 +438,56 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
-		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = "1";
-		fd.fnCompressed = "2";
-		ar.compressFileInternal(inForTree, fd);
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
 
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "43";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "22";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
+		HFArchiver ar = new HFArchiver();
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(135, s.length());
-		assertEquals(29, fd.fzCompressed);
-		assertEquals(87, outForCompress.size());
+		assertEquals(29, fd.sizeCompressed);
+		assertEquals(89, outForCompress.size());
 		assertEquals(1, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 
 
-		byte[] arr = outForCompress.toByteArray();
-		ByteArrayInputStream in3 = new ByteArrayInputStream(arr);
+		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals("2", fd.fnCompressed);
-		assertEquals("1", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("22", fd.fnameCompressed);
+		assertEquals("43", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -448,19 +502,28 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "яч";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = "1111";
-		fd.fnCompressed = "2222";
-		ar.compressFileInternal(inForTree, fd);
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 
 		assertEquals(160, s.length());
-		assertEquals(20, fd.fzCompressed);
-		assertEquals(75, outForCompress.size());
+		assertEquals(20, fd.sizeCompressed);
+		assertEquals(71, outForCompress.size());
 		assertEquals(32, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
@@ -471,26 +534,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals("2222", fd.fnCompressed);
-		assertEquals("1111", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm1234567890qwertyuiopasdfghjklzxcvbnm", fd.fnameCompressed);
+		assertEquals("яч", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -505,18 +567,27 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "1234567890";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "0987654321";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = "1234567890";
-		fd.fnCompressed = "0987654321";
-		ar.compressFileInternal(inForTree, fd);
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 
 		assertEquals(172, s.length());
-		assertEquals(119, fd.fzCompressed);
+		assertEquals(119, fd.sizeCompressed);
 		assertEquals(433, outForCompress.size());
 		assertEquals(20, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
@@ -529,26 +600,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals("0987654321", fd.fnCompressed);
-		assertEquals("1234567890", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("0987654321", fd.fnameCompressed);
+		assertEquals("1234567890", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -563,18 +633,26 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
-		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = ",";
-		fd.fnCompressed = ",,";
-		ar.compressFileInternal(inForTree, fd);
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
 
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = ",";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = ",,";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
+		HFArchiver ar = new HFArchiver();
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(1, s.length());
-		assertEquals(1, fd.fzCompressed);
+		assertEquals(1, fd.sizeCompressed);
 		assertEquals(47, outForCompress.size());
 		assertEquals(1, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
@@ -585,26 +663,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals(",,", fd.fnCompressed);
-		assertEquals(",", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals(",,", fd.fnameCompressed);
+		assertEquals(",", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -624,19 +701,28 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "ячпапоукатлоптклпитедплптмт апткплтпл клпотклопекпо какку";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "купар";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = ",";
-		fd.fnCompressed = ",,";
-		ar.compressFileInternal(inForTree, fd);
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 
 		assertEquals(2, s.length());
-		assertEquals(1, fd.fzCompressed);
-		assertEquals(47, outForCompress.size());
+		assertEquals(1, fd.sizeCompressed);
+		assertEquals(159, outForCompress.size());
 		assertEquals(2, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
@@ -646,26 +732,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals(",,", fd.fnCompressed);
-		assertEquals(",", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("купар", fd.fnameCompressed);
+		assertEquals("ячпапоукатлоптклпитедплптмт апткплтпл клпотклопекпо какку", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -680,19 +765,28 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
+
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "яч";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "купаруапукпапа апапап цваукаа укаукаа";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
 		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = ",";
-		fd.fnCompressed = ",,";
-		ar.compressFileInternal(inForTree, fd);
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 
 		assertEquals(2, s.length());
-		assertEquals(1, fd.fzCompressed);
-		assertEquals(53, outForCompress.size());
+		assertEquals(1, fd.sizeCompressed);
+		assertEquals(55, outForCompress.size());
 		assertEquals(2, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
@@ -702,26 +796,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.length(), out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals(",,", fd.fnCompressed);
-		assertEquals(",", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("купаруапукпапа апапап цваукаа укаукаа", fd.fnameCompressed);
+		assertEquals("яч", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -737,20 +830,28 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
-		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = ",";
-		fd.fnCompressed = ",,";
-		ar.compressFileInternal(inForTree, fd);
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
 
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "яч";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "купар";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
+		HFArchiver ar = new HFArchiver();
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(303, s.length());
 		assertEquals(447, s.getBytes().length);
-		assertEquals(215, fd.fzCompressed);
-		assertEquals(835, outForCompress.size());
+		assertEquals(215, fd.sizeCompressed);
+		assertEquals(837, outForCompress.size());
 		assertEquals(20, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
@@ -760,26 +861,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.getBytes().length, out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals(",,", fd.fnCompressed);
-		assertEquals(",", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("купар", fd.fnameCompressed);
+		assertEquals("яч", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -794,20 +894,28 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
-		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = ",";
-		fd.fnCompressed = ",,";
-		ar.compressFileInternal(inForTree, fd);
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
 
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "яч";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "купар";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
+		HFArchiver ar = new HFArchiver();
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(98, s.length());
 		assertEquals(193, s.getBytes().length);
-		assertEquals(72, fd.fzCompressed);
-		assertEquals(355, outForCompress.size());
+		assertEquals(72, fd.sizeCompressed);
+		assertEquals(357, outForCompress.size());
 		assertEquals(28, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
@@ -817,26 +925,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.getBytes().length, out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals(",,", fd.fnCompressed);
-		assertEquals(",", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("купар", fd.fnameCompressed);
+		assertEquals("яч", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());
@@ -851,20 +958,28 @@ public class HFArchiverTest {
 		ByteArrayInputStream inForCompress = new ByteArrayInputStream(s.getBytes());
 		ByteArrayOutputStream outForCompress = new ByteArrayOutputStream(200);
 
-		HFArchiver ar = new HFArchiver();
-		HFFileData fd = new HFFileData();
-		fd.sin = inForCompress;
-		fd.sout = outForCompress;
-		fd.fzUncompressed = s.length();
-		fd.fnUncompressed = ",";
-		fd.fnCompressed = ",,";
-		ar.compressFileInternal(inForTree, fd);
+		HFTree tree = new HFTree();
+		tree.buildFromStream(inForTree);
 
+		HFArchiveHeader fd = new HFArchiveHeader();
+		fd.fnameUncompressed = "яч";
+		fd.sizeUncompressed = s.length();
+		fd.fnameCompressed = "купар";
+		fd.CRC32Value = tree.CRC32Value;
+		fd.saveHeader(outForCompress);
+
+		HFArchiver ar = new HFArchiver();
+		HFCompressData cData = new HFCompressData(inForCompress, outForCompress);
+
+		ar.compressFileInternal(tree, cData);
+
+		fd.sizeCompressed = cData.sizeCompressed;
+		fd.lastBits = cData.lastBits;
 
 		assertEquals(97, s.length());
 		assertEquals(191, s.getBytes().length);
-		assertEquals(71, fd.fzCompressed);
-		assertEquals(349, outForCompress.size());
+		assertEquals(71, fd.sizeCompressed);
+		assertEquals(351, outForCompress.size());
 		assertEquals(18, fd.lastBits);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
@@ -874,26 +989,25 @@ public class HFArchiverTest {
 
 		HFUncompressor uc = new HFUncompressor();
 
-		long tmp1 = fd.fzCompressed;
+		long tmp1 = fd.sizeCompressed;
 		byte tmp2 = fd.lastBits;
-		fd.sin = in3;
-		fd.sout = out3;
-		fd.loadHeader();
-		fd.fzCompressed = tmp1;
+		fd.loadHeader(in3);
+		fd.sizeCompressed = tmp1;
 		fd.lastBits = tmp2;
 
-		var tree = new HFTree(in3);
-		tree.loadTable(fd.tableSize);
+		tree = new HFTree();
+		tree.loadTable(in3);
 
-		uc.uncompress(tree, fd);
+		var uData = new HFUncompressData(in3, out3, fd.sizeCompressed, fd.lastBits);
+		uc.uncompress(tree, uData);
 
 		logger.info(s);
 		logger.info(out3.toString());
 
 		assertEquals(s.getBytes().length, out3.size());
-		assertEquals(s.length(), fd.fzUncompressed);
-		assertEquals(",,", fd.fnCompressed);
-		assertEquals(",", fd.fnUncompressed);
+		assertEquals(s.length(), fd.sizeUncompressed);
+		assertEquals("купар", fd.fnameCompressed);
+		assertEquals("яч", fd.fnameUncompressed);
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(s, out3.toString());

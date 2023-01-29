@@ -5,38 +5,44 @@ public class HFCompressor
 {
 	private final static Logger logger = Logger.getLogger("HFLogger");
 	HFTree tree;
+	HFCompressData cData;
 	byte[] writeBuffer = new byte[4];  // буфер для записи int в OutputStream
-	boolean externalStreams; // if false we call close() on streams after finishing compress operation
-	InputStream sin;         // stream with data to compress
-	OutputStream sout;       // stream with compressed data
 	public long encodedBytes = 0;
 	public byte lastBits = 0;
 
 
-	public HFCompressor(InputStream in, OutputStream out)
-	{
-		sin = in;
-		sout = out;
-		externalStreams = true;
-	}
-
-	public void compress(HFTree tree) throws IOException
+	public void compress(HFTree tree, HFCompressData cData) throws IOException
 	{
 		encodedBytes = 0;  // сбрасываем счетчики
 		lastBits = 0;
 		this.tree = tree;
+		this.cData = cData;
+
 		compressInternal();
+
+		cData.sizeCompressed = encodedBytes;
+		cData.lastBits = lastBits;
 	}
 
 	public void compressInternal() throws IOException
 	{
 		logger.entering(this.getClass().getName(),"compressInternal");
 
+		long threshold = 0;
+		long delta = cData.sizeUncompressed/100;
+		long total = 0;
 		int ch;
 		int accum = 0;
 		int counter = 0;
-		while ((ch = sin.read()) != -1)
+		while ((ch = cData.sin.read()) != -1)
 		{
+			if(total > threshold)
+			{
+				threshold +=delta;
+				cData.cb.compressPercent((int)(100*threshold/cData.sizeUncompressed));
+			}
+
+			total++;
 			HFCode hfc = tree.codesMap.get(ch);
 
 			if (counter + hfc.len > Integer.SIZE) // новый byte не влазит в остаток слова, делим на 2 части
@@ -79,13 +85,7 @@ public class HFCompressor
 			lastBits = (byte)counter;
 		}
 
-		sout.flush();
-
-		if(!externalStreams)
-		{
-			sout.close();
-			sin.close();
-		}
+		cData.sout.flush();
 
 		logger.exiting(this.getClass().getName(),"compressInternal");
 	}
@@ -96,7 +96,7 @@ public class HFCompressor
 		writeBuffer[1] = (byte)(v >>> 16);
 		writeBuffer[2] = (byte)(v >>>  8);
 		writeBuffer[3] = (byte)(v >>>  0);
-		sout.write(writeBuffer, 0, 4);
+		cData.sout.write(writeBuffer, 0, 4);
 		encodedBytes += 4;
 	}
 
