@@ -41,11 +41,15 @@ public class HFArchiver
 
 	public void compressFile2(String[] filenames) throws IOException
 	{
+		if(filenames.length < 2)
+			throw new IllegalArgumentException("There are no files to compress. Exiting...");
+
+		HFArchiveHeader fh = new HFArchiveHeader();
+		fh.fillFileRecs(filenames); // that needs to be before creating output stream, to avoid creating empty archive files
+
 		String arcFilename = getArchiveFilename(filenames[0]); 	// first parameter in array is name of archive
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(arcFilename), OUTPUT_BUF_SIZE);
 
-		HFArchiveHeader fh = new HFArchiveHeader();
-		fh.fillFileRecs(filenames);
 		fh.saveHeader(sout);
 
 		for (int i = 0; i < fh.files.size(); i++)

@@ -12,6 +12,7 @@ public class HFArchiverTest {
 	private static final byte[] fs = new byte[]{'R', 'O', 'M', 'A'};
 	private static Logger logger;
 	private final byte[] fv = new byte[]{'0', '1'};
+	private final String NO_FILES_TO_COMPRESS = "There are no files to compress. Exiting...";
 
 	public HFArchiverTest() throws IOException
 	{
@@ -32,12 +33,12 @@ public class HFArchiverTest {
 	{
 		HFArchiver ar = new HFArchiver();
 
-		Throwable thrown = assertThrows(FileNotFoundException.class, () -> {
+		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {};
 			ar.compressFile2(args);
 		});
 
-		assertEquals(" (The system cannot find the path specified)", thrown.getMessage());
+		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
 	}
 
 	@Test
@@ -45,12 +46,12 @@ public class HFArchiverTest {
 	{
 		HFArchiver ar = new HFArchiver();
 
-		Throwable thrown = assertThrows(FileNotFoundException.class, () -> {
+		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1"};
 			ar.compressFile2(args);
 		});
 
-		assertEquals("1 (The system cannot find the file specified)", thrown.getMessage());
+		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
 	}
 /*
 	@Test
@@ -71,12 +72,12 @@ public class HFArchiverTest {
 	{
 		HFArchiver ar = new HFArchiver();
 
-		Throwable thrown = assertThrows(FileNotFoundException.class, () -> {
+		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1.txt"};
 			ar.compressFile2(args);
 		});
 
-		assertEquals("1.txt (The system cannot find the file specified)", thrown.getMessage());
+		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
 	}
 /*
 	@Test
@@ -97,12 +98,12 @@ public class HFArchiverTest {
 	{
 		HFArchiver ar = new HFArchiver();
 
-		Throwable thrown = assertThrows(FileNotFoundException.class, () -> {
+		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {};
 			ar.compressFile2(args);
 		});
 
-		assertEquals(" (The system cannot find the path specified)", thrown.getMessage());
+		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
 	}
 
 	@Test
@@ -110,12 +111,12 @@ public class HFArchiverTest {
 	{
 		HFArchiver ar = new HFArchiver();
 
-		Throwable thrown = assertThrows(FileNotFoundException.class, () -> {
+		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1.txt", "4"};
 			ar.compressFile2(args);
 		});
 
-		assertEquals("4 (The system cannot find the file specified)", thrown.getMessage());
+		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
 	}
 
 	@Test
@@ -123,12 +124,12 @@ public class HFArchiverTest {
 	{
 		HFArchiver ar = new HFArchiver();
 
-		Throwable thrown = assertThrows(FileNotFoundException.class, () -> {
+		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1.txt", "5.hf"};
 			ar.compressFile2(args);
 		});
 
-		assertEquals("5.hf (The system cannot find the file specified)", thrown.getMessage());
+		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
 	}
 
 	@Test

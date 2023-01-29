@@ -103,6 +103,8 @@ public class HFArchiveHeader
 			else
 				logger.warning(String.format("File '%s' cannot be found, pass on it.", fl.getAbsolutePath()));
 		}
+		if(files.size() == 0)
+			throw new IllegalArgumentException("There are no files to compress. Exiting...");
 	}
 
 	public HashMap<String,Integer> getFieldOffsets()

@@ -38,15 +38,19 @@ class HFCompressData {
 
 class HFCallback
 {
-	public void compressPercent(int percent)
+	public void start()
+	{
+
+	}
+
+	public void heartBeat(int percent)
 	{
 		System.out.print("\r");
 		System.out.printf("Progress %4d%%...", percent);
 	}
 
-	public void uncompressPercent(int percent)
+	public void finish()
 	{
-		System.out.print("\r");
-		System.out.printf("Progress %4d%%...", percent);
+		System.out.println();
 	}
 }

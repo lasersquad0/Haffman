@@ -34,12 +34,15 @@ public class HFCompressor
 		int ch;
 		int accum = 0;
 		int counter = 0;
+
+		cData.cb.start();
+
 		while ((ch = cData.sin.read()) != -1)
 		{
 			if(total > threshold)
 			{
 				threshold +=delta;
-				cData.cb.compressPercent((int)(100*threshold/cData.sizeUncompressed));
+				cData.cb.heartBeat((int)(100*threshold/cData.sizeUncompressed));
 			}
 
 			total++;
@@ -86,6 +89,8 @@ public class HFCompressor
 		}
 
 		cData.sout.flush();
+
+		cData.cb.finish();
 
 		logger.exiting(this.getClass().getName(),"compressInternal");
 	}

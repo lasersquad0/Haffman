@@ -36,12 +36,14 @@ public class HFUncompressor
 		int data2 = 0;
 		int remaining = Integer.SIZE;
 
+		uData.cb.start();
+
 		while (encodedBytes < uData.sizeCompressed) // заканчиваем раскодировать как только кончились байты
 		{
 			if(encodedBytes > threshold)
 			{
 				threshold +=delta;
-				uData.cb.uncompressPercent((int)(100*threshold/uData.sizeCompressed));
+				uData.cb.heartBeat((int)(100*threshold/uData.sizeCompressed));
 			}
 
 			// вот так хитро читаем int из потока
@@ -122,6 +124,8 @@ public class HFUncompressor
 		}
 
 		uData.sout.flush();
+
+		uData.cb.finish();
 
 		logger.exiting(this.getClass().getName(),"uncompressInternal");
 	}
