@@ -253,16 +253,21 @@ public class HFArchiver
 		HFArchiveHeader fh = new HFArchiveHeader();
 		fh.loadHeader(sin);
 
-		System.out.printf("%-70s %20s %18s %10s %20s %15s%n", "File name", "File size", "Compressed", "Ratio", "Modified", "CRC32");
+		System.out.printf("%-49s %18s %15s %7s %18s %13s%n", "File name", "File size", "Compressed", "Ratio", "Modified", "CRC32");
 		var dt = new SimpleDateFormat("MM/dd/yyyy HH:mm");
 
 		for (int i = 0; i < fh.files.size(); i++)
 		{
 			HFFileRec fr = fh.files.get(i);
 			float ratio = 100*(float)fr.compressedSize/(float)fr.fileSize;
-			System.out.printf("%-70s %,20d %,18d %10.1f%% %20s %15d%n", fr.fileName, fr.fileSize, fr.compressedSize, ratio, dt.format(fr.modifiedDate), fr.CRC32Value);
+			System.out.printf("%-49s %,18d %,15d %7.1f%% %18s %13d%n", truncate(fr.fileName, 49), fr.fileSize, fr.compressedSize, ratio, dt.format(fr.modifiedDate), fr.CRC32Value);
 		}
 
 		sin.close();
+	}
+
+	private String truncate(String str, int len)
+	{
+		return (str.length() > len) ? str.substring(0, len - 3) + "..." : str;
 	}
 }
