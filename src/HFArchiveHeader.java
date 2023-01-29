@@ -23,44 +23,22 @@ public class HFArchiveHeader
 	private final static Logger logger = Logger.getLogger("HFLogger");
 	final byte[] fileSignature = {'R', 'O', 'M', 'A'};
 	final byte[] fileVersion = {'0', '1'};
-	long CRC32Value;
-	long sizeUncompressed;
-	String fnameUncompressed;
-	long sizeCompressed;
-	byte lastBits;
-	String fnameCompressed;
 	ArrayList<HFFileRec> files = new ArrayList<>();
 
 
 
 	/** Now itwworks through asserts
 	 * Replace asserts by throwing exceptions.
-	 * @param checkForCompressed - allows do not check "compressed" fields because they are not filled properly till end of compressing.
 	 */
-	 public void checkHeaderData(boolean checkForCompressed)
+	 public void checkHeaderData()
 	{
 		byte[] b = {'R', 'O', 'M', 'A'};
 		assertArrayEquals(b, fileSignature);
 
-		b = new byte[]{'0', '1'};
 		assertTrue((fileVersion[0] >= '0') && (fileVersion[0] <= '9'));
 		assertTrue((fileVersion[1] >= '0') && (fileVersion[1] <= '9'));
 
-		assert CRC32Value > 0;
-		assert sizeUncompressed > 0;
-
-		if(checkForCompressed)
-		{
-			assert sizeCompressed > 0;
-			assert fnameCompressed != null;
-			assert fnameCompressed.length() > 0;
-			assert (lastBits > 0) && (lastBits <= 32); // lastBits==32 когда все биты в int значимые. Поэтому значение 0 не может быть здесь
-		}
-
-		assert fnameUncompressed != null;
-		assert fnameUncompressed.length() > 0;
-		//assert tableSize > 0;
-
+		assertTrue(files.size() > 0);
 	}
 
 	public void loadHeader(InputStream sin) throws IOException
@@ -72,23 +50,6 @@ public class HFArchiveHeader
 		if(res < 0)
 			throw new IOException("Wrong file format.");
 
-		/*
-		CRC32Value = dos.readLong();
-		sizeCompressed = dos.readLong();
-		lastBits = dos.readByte();
-		sizeUncompressed = dos.readLong();
-
-		int filenameSize = dos.readShort();
-		StringBuilder sb = new StringBuilder(filenameSize);
-		while(filenameSize > 0)
-		{
-			sb.append(dos.readChar());
-			filenameSize--;
-		}
-
-		fnameUncompressed = sb.toString();
-		 */
-
 		files.clear();
 		short filesCount = dos.readShort();
 		for (short i = 0; i < filesCount; i++)
@@ -99,23 +60,17 @@ public class HFArchiveHeader
 			files.add(fr);
 		}
 
-		//checkHeaderData(false); // TODO здесь надо вообщем то true, но тогда тесты не работают так как они не могут постфактум записать fzCompressed и lastBits в произвольное место потока
+		checkHeaderData();
 	}
 
 	public void saveHeader(OutputStream sout) throws IOException
 	{
-		//checkHeaderData(false);
+		checkHeaderData();
 
 		var dos = new DataOutputStream(sout);
 
 		dos.write(fileSignature);
 		dos.write(fileVersion);
-//		dos.writeLong(CRC32Value);
-//		dos.writeLong(sizeCompressed);
-//		dos.writeByte(lastBits);
-//		dos.writeLong(sizeUncompressed);
-//		dos.writeShort(fnameUncompressed.length());
-//		dos.writeChars(fnameUncompressed);
 
 		dos.writeShort(files.size()); // assumed archive will have less than 65535 files in it
 		for (HFFileRec fr : files)
@@ -124,11 +79,14 @@ public class HFArchiveHeader
 		}
 	}
 
+	/**
+	 * Adds filenames into ArrayList of HFFileRec together with file lengths and modified attributes
+	 * @param filenames list of files to compress. Note, that zero index in this array contains archive name, so first filename is filenames[1]
+	 */
 	public void fillFileRecs(String[] filenames)
 	{
 		files.clear();  // just in case
 
-		// starting from 1, zero index is for archive name
 		for (int i = 1; i < filenames.length; i++)
 		{
 			File fl = new File(filenames[i]);
