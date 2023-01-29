@@ -9,9 +9,8 @@ public class HFArchiver
 	final int OUTPUT_BUF_SIZE = 100_000_000; // если файл >100M, то используем буфер этого размера иначе буфер размера файла
 	final int MIN_BUF_SIZE = 1_000; // if accidentally filesize==0, use small buffer
 	private static final String HF_ARCHIVE_EXT = ".hf";
-//	private static final String HF_ARCHIVE_EXT2 = "hf";
 
-
+/*
 	protected void compressFileInternal(HFTree tree, HFCompressData cData) throws IOException
 	{
 		logger.info("Analysis finished. HF table is build.");
@@ -25,15 +24,19 @@ public class HFArchiver
 
 		logger.info("Compression finished.");
 	}
-
+*/
 	private String getArchiveFilename(String arcParam)
 	{
-		String ext = arcParam.substring(arcParam.lastIndexOf("."));
+		int index = arcParam.lastIndexOf(".");
+		if(index >= 0)
+		{
+			String ext = arcParam.substring(index);
 
-		if(HF_ARCHIVE_EXT.equals(ext))
-			return arcParam;
-		else
-			return arcParam + HF_ARCHIVE_EXT;
+			if (HF_ARCHIVE_EXT.equals(ext))
+				return arcParam;
+		}
+
+		return arcParam + HF_ARCHIVE_EXT;
 	}
 
 	public void compressFile2(String[] filenames) throws IOException
@@ -53,8 +56,10 @@ public class HFArchiver
 
 			File fl = new File(fr.fileName);
 
-			int BUFFER = getOptimalFileBuffer(fr.fileSize);
+			int BUFFER = getOptimalBufferSize(fr.fileSize);
 			InputStream sin1 = new BufferedInputStream(new FileInputStream(fl), BUFFER); // stream только для подсчета весов и далее построения дерева Хаффмана
+
+			InputStream sin2 = new BufferedInputStream(new FileInputStream(fl), BUFFER);
 
 			HFTree tree = new HFTree();
 			tree.buildFromStream(sin1);
@@ -66,11 +71,9 @@ public class HFArchiver
 
 			tree.saveTable(sout);
 
-			InputStream sin2 = new BufferedInputStream(new FileInputStream(fl), BUFFER);
-
-			HFCompressData cData = new HFCompressData(sin2, sout);
+			HFCompressData cData = new HFCompressData(sin2, sout, fr.fileSize);
 			HFCompressor c = new HFCompressor();
-			cData.sizeUncompressed = fr.fileSize;
+
 			c.compress(tree, cData);
 
 			fr.compressedSize = cData.sizeCompressed;
@@ -83,7 +86,7 @@ public class HFArchiver
 
 		sout.close();
 
-		updateHeaders(fh,arcFilename);
+		updateHeaders(fh, arcFilename);
 	}
 
 	/**
@@ -115,7 +118,7 @@ public class HFArchiver
 
 		raf.close();
 	}
-
+/*
 	public void compressFile(String filename) throws IOException
 	{
 		logger.info(String.format("Analysing file '%s', calc weights, building HF table.", filename));
@@ -149,19 +152,19 @@ public class HFArchiver
 
 		// записываем в архив размер закодированного потока в байтах и lastBits
 		RandomAccessFile raf = new RandomAccessFile(new File(acrFilename), "rw");
-		raf.seek(14/*fileData.encodedDataSizePos()*/);
+		raf.seek(14);
 		raf.writeLong(cData.sizeCompressed);
 		raf.writeByte(cData.lastBits);
 		raf.close();
 	}
-
+*/
 	public void unCompressFile2(String arcFilename) throws IOException
 	{
 		logger.info(String.format("Loading archive file '%s'.", arcFilename));
 
 		File fl = new File(arcFilename);
 		long fileLen = fl.length();
-		InputStream sin = new BufferedInputStream(new FileInputStream(fl), getOptimalFileBuffer(fileLen));
+		InputStream sin = new BufferedInputStream(new FileInputStream(fl), getOptimalBufferSize(fileLen));
 
 		HFArchiveHeader fh = new HFArchiveHeader();
 		fh.loadHeader(sin);
@@ -173,7 +176,7 @@ public class HFArchiver
 			HFTree tree = new HFTree();
 			tree.loadTable(sin);
 
-			OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), getOptimalFileBuffer(fr.fileSize));
+			OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), getOptimalBufferSize(fr.fileSize));
 
 			logger.info(String.format("Extracting file '%s'...", fr.fileName));
 
@@ -195,13 +198,13 @@ public class HFArchiver
 		logger.info("All files are extracted.");
 	}
 
-	private int getOptimalFileBuffer(long fileLen)
+	private int getOptimalBufferSize(long fileLen)
 	{
 		int FILE_BUFFER = (fileLen < MAX_BUF_SIZE) ? (int) fileLen : MAX_BUF_SIZE;
 		FILE_BUFFER = (fileLen == 0) ? MIN_BUF_SIZE : FILE_BUFFER; // for support of rare zero length files
 		return FILE_BUFFER;
 	}
-
+/*
 	public void unCompressFile(String arcFilename) throws IOException
 	{
 		logger.info(String.format("Loading archive file '%s' and HF table.", arcFilename));
@@ -237,7 +240,7 @@ public class HFArchiver
 
 		logger.info("Uncompressing is done.");
 	}
-
+*/
 	public void listFiles(String arcFilename) throws IOException
 	{
 		File fl = new File(arcFilename);
