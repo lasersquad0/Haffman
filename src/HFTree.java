@@ -7,7 +7,7 @@ public class HFTree
 {
 	private final static Logger logger = Logger.getLogger("HFLogger");
 	protected  int[] symbols; // all symbols that are used in input file
-	protected int[] weights;  //  weights of symbols above
+	protected long[] weights;  //  weights of symbols above
 	protected HFNode treeRoot;
 	ArrayList<HFCode> codesList = new ArrayList<>();
 	HashMap<Integer,HFCode> codesMap = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
@@ -37,7 +37,7 @@ public class HFTree
 
 		int BUF_SIZE = 100_000_000;  // если дали поток, то мы не знаем размер файла читаем кусками по BUF_SIZE (100М) тогда
 
-		int[] freq = new int[256];
+		long[] freq = new long[256];
 		byte[] buffer = new byte[BUF_SIZE];
 		CRC32 cc = new CRC32();
 
@@ -69,7 +69,7 @@ public class HFTree
 		}
 
 		symbols = new int[nonzero];
-		weights = new int[nonzero];
+		weights = new long[nonzero];
 
 		int j = 0;
 		for (int i = 0; i < freq.length; i++)
@@ -82,8 +82,8 @@ public class HFTree
 			}
 		}
 
-		logger.fine(String.format("symbols=%s", Arrays.toString(symbols)));
-		logger.fine(String.format("weights=%s",Arrays.toString(weights)));
+		logger.finer(String.format("symbols=%s", Arrays.toString(symbols)));
+		logger.finer(String.format("weights=%s",Arrays.toString(weights)));
 		logger.fine(String.format("min weight=%d, max weight=%d", min, max));
 		logger.fine(String.format("nonzero=%d, sum(size)=%d", nonzero, sum));
 
@@ -155,7 +155,7 @@ public class HFTree
 
 
 		logger.fine(String.format("min codelen=%d, max codelen=%d", minCodeLen, maxCodeLen));
-		logger.fine(String.format("codes size=%d %s", codesList.size(), codesList));
+		logger.finer(String.format("codes size=%d %s", codesList.size(), codesList));
 
 		logger.exiting(this.getClass().getName(),"calcCodes");
 	}

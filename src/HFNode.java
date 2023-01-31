@@ -1,20 +1,18 @@
-import java.io.InputStream;
-import java.io.OutputStream;
 
 class HFNode implements Comparable<HFNode>
 {
-	int weight;
+	long weight;
 	int symbol; // в реальности это один байт(0..255) но ввиду его знаковости делаем int что бы избежать проблем с отриц значениями
 	HFNode rightNode;
 	HFNode leftNode;
 
-	public HFNode(int w, int c)
+	public HFNode(long w, int c)
 	{
 		weight = w;
 		symbol = c;
 	}
 
-	public HFNode(HFNode left, HFNode right, int w, int c)
+	public HFNode(HFNode left, HFNode right, long w, int c)
 	{
 		leftNode = left;
 		rightNode = right;
@@ -25,7 +23,7 @@ class HFNode implements Comparable<HFNode>
 	@Override
 	public int compareTo(HFNode o)
 	{
-		return Integer.compare(this.weight, o.weight);
+		return Long.compare(this.weight, o.weight);
 	} // сортировка по возрастанию весов
 }
 
