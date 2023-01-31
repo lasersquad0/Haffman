@@ -1,5 +1,5 @@
 import java.io.*;
-import java.util.Arrays;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import org.apache.commons.cli.*;
 
@@ -15,23 +15,29 @@ public class Main {
 		//  архивацию всех файлов их папки пока не поддерживаем - либо обдумать как правильно хранить папки и файлы внутри архива.
 		//  многопоточность для разных файлов. подумать над многопоточностью для одного файла.
 
-
 		//Comparator<HfNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
 //		final String FN_TO_COMPRESS   = "voyna-i-mir-tom-1.txt";//"primes - 20000G small.txt"; //"slack.exe";//"primes - 20000-20010G.txt"; //"oneletter.txt"; //"primes - 20000G small.txt"; //"primes - 0-10G.txt";  //Война и мир.txt"; //
 //		final String FN_TO_UNCOMPRESS = "voyna-i-mir-tom-1.hf";//"primes - 20000G small.hf";//"slack.hf"; //"primes - 20000-20010G.hf"; //"oneletter.hf";// "primes - 0-10G.hf"; //Война и мир.hf"; "primes - 20000G small.hf";
 
-		//LogManager.getLogManager().readConfiguration(Main.class.getResourceAsStream("huffmanlog.properties"));
+
+		InputStream is = Main.class.getResourceAsStream("huffmanlog.properties");
+		if(is != null)
+		{
+			LogManager.getLogManager().readConfiguration(is);
+		}
+		else
+		{
+			logger.info("NULL returned - Main.class.getResourceAsStream(\"huffmanlog.properties\")\n");
+		}
 
 		logger.info("Huffman archiver. Start.");
-
-//		var arg = new String[]{"-a", "archive.hf", "voyna-i-mir-tom-1.txt", "primes - 20000-20010G.txt", "primes - 20000G small.txt", "Война и мир.txt"};
 
 		CommandLine cmd = getCommandLine(args);
 
 		if(cmd.hasOption('a'))
 		{
 			String[] ss = cmd.getOptionValues('a');
-			System.out.println(Arrays.toString(ss));
+			//System.out.println(Arrays.toString(ss));
 			HFArchiver arc = new HFArchiver();
 			arc.compressFile2(ss); 	// Note ss[0] is a name of archive while ss[1], ss[2] and so on - files to be added to archive
 
