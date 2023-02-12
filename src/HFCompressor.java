@@ -9,7 +9,7 @@ public class HFCompressor
 	byte[] writeBuffer = new byte[4];  // буфер для записи int в OutputStream
 	public long encodedBytes = 0;
 	public byte lastBits = 0;
-
+	final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
 
 	public void compress(HFTree tree, HFCompressData cData) throws IOException
 	{
@@ -35,11 +35,11 @@ public class HFCompressor
 		int accum = 0;
 		int counter = 0;
 
-		cData.cb.start();
+		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
 
 		while ((ch = cData.sin.read()) != -1)
 		{
-			if(total > threshold)
+			if((cData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
 			{
 				threshold +=delta;
 				cData.cb.heartBeat((int)(100*threshold/cData.sizeUncompressed));
@@ -90,7 +90,7 @@ public class HFCompressor
 
 		cData.sout.flush();
 
-		cData.cb.finish();
+		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.finish();
 
 		logger.exiting(this.getClass().getName(),"compressInternal");
 	}
@@ -100,7 +100,7 @@ public class HFCompressor
 		writeBuffer[0] = (byte)(v >>> 24);
 		writeBuffer[1] = (byte)(v >>> 16);
 		writeBuffer[2] = (byte)(v >>>  8);
-		writeBuffer[3] = (byte)(v >>>  0);
+		writeBuffer[3] = (byte)(v);
 		cData.sout.write(writeBuffer, 0, 4);
 		encodedBytes += 4;
 	}
