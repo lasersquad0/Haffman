@@ -35,7 +35,7 @@ public class HFArchiverTest {
 
 		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {};
-			ar.compressFile2(args);
+			ar.compressFiles(args);
 		});
 
 		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
@@ -48,7 +48,7 @@ public class HFArchiverTest {
 
 		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1"};
-			ar.compressFile2(args);
+			ar.compressFiles(args);
 		});
 
 		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
@@ -74,7 +74,7 @@ public class HFArchiverTest {
 
 		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1.txt"};
-			ar.compressFile2(args);
+			ar.compressFiles(args);
 		});
 
 		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
@@ -100,7 +100,7 @@ public class HFArchiverTest {
 
 		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {};
-			ar.compressFile2(args);
+			ar.compressFiles(args);
 		});
 
 		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
@@ -113,7 +113,7 @@ public class HFArchiverTest {
 
 		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1.txt", "4"};
-			ar.compressFile2(args);
+			ar.compressFiles(args);
 		});
 
 		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
@@ -126,7 +126,7 @@ public class HFArchiverTest {
 
 		Throwable thrown = assertThrows(IllegalArgumentException.class, () -> {
 			String[] args = {"1.txt", "5.hf"};
-			ar.compressFile2(args);
+			ar.compressFiles(args);
 		});
 
 		assertEquals(NO_FILES_TO_COMPRESS, thrown.getMessage());
@@ -259,7 +259,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -323,7 +323,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -386,7 +386,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -450,7 +450,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -514,7 +514,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -578,7 +578,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -641,7 +641,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -705,7 +705,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -774,7 +774,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -838,7 +838,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -904,7 +904,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -970,7 +970,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
@@ -1036,7 +1036,7 @@ public class HFArchiverTest {
 		tree = new HFTree();
 		tree.loadTable(in3);
 
-		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.lastBits);
+		var uData = new HFUncompressData(in3, out3, fr.compressedSize, fr.fileSize, fr.lastBits);
 		uc.uncompress(tree, uData);
 
 		logger.info(s);
