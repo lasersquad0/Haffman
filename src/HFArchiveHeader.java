@@ -105,14 +105,14 @@ public class HFArchiveHeader
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
 	}
 
-	public HashMap<String,Integer> getFieldOffsets()
+	public HashMap<FHeaderOffs,Integer> getFieldOffsets()
 	{
-		var res = new HashMap<String, Integer>();
-		res.put("initial offset", fileSignature.length + fileVersion.length + Short.BYTES); // initial fixed offset
-		res.put("CRC32Value", Long.BYTES);
-		res.put("compressedSize", 3*Long.BYTES);
-		res.put("lastBits", 4*Long.BYTES);
-		res.put("HFFileRecSize", 4*Long.BYTES + Byte.BYTES+ Short.BYTES);
+		var res = new HashMap<FHeaderOffs, Integer>();
+		res.put(FHeaderOffs.InitialOffset, fileSignature.length + fileVersion.length + Short.BYTES); // initial fixed offset
+		res.put(FHeaderOffs.CRC32Value, Long.BYTES);
+		res.put(FHeaderOffs.compressedSize, 3*Long.BYTES);
+		res.put(FHeaderOffs.lastBits, 4*Long.BYTES);
+		res.put(FHeaderOffs.FileRecSize, 4*Long.BYTES + Byte.BYTES+ Short.BYTES);
 
 		return res;
 	}
@@ -150,7 +150,7 @@ class HFFileRec
 		dos.writeLong(compressedSize);
 		dos.writeByte(lastBits);
 		dos.writeShort(fileName.length());
-		dos.writeChars(fileName);  // writes 2 bytes for each char
+		dos.writeChars(fileName);  // NOTE! writes 2 bytes for each char
 	}
 
 	public void load(InputStream sout) throws IOException
@@ -173,4 +173,13 @@ class HFFileRec
 
 		fileName = sb.toString();
 	}
+}
+
+enum FHeaderOffs
+{
+	InitialOffset,
+	CRC32Value,
+	compressedSize,
+	lastBits,
+	FileRecSize
 }
