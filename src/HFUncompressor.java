@@ -9,7 +9,7 @@ public class HFUncompressor
 	HFUncompressData uData;
 	CRC32 crc = new CRC32();
 	long decodedBytes = 0;
-
+	final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
 
 	public void uncompress(HFTree tree, HFUncompressData uData) throws IOException
 	{
@@ -36,11 +36,11 @@ public class HFUncompressor
 		int data2 = 0;
 		int remaining = Integer.SIZE;
 
-		uData.cb.start();
+		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
 
 		while (encodedBytes < uData.sizeCompressed) // заканчиваем раскодировать как только кончились байты
 		{
-			if(encodedBytes > threshold)
+			if((uData.sizeCompressed > SHOW_PROGRESS_AFTER) && (encodedBytes > threshold))
 			{
 				threshold +=delta;
 				uData.cb.heartBeat((int)(100*threshold/uData.sizeCompressed));
@@ -125,7 +125,7 @@ public class HFUncompressor
 
 		uData.sout.flush();
 
-		uData.cb.finish();
+		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
 
 		logger.exiting(this.getClass().getName(),"uncompressInternal");
 	}
