@@ -1,56 +1,50 @@
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public class HFUncompressData {
-	long sizeCompressed; // to know where to stop decoding
-	long sizeUncompressed; // may be to compare with original size
-	long CRC32Value;
+public class HFUncompressData extends UncompressData
+{
 	byte lastBits;
-	InputStream sin;
-	OutputStream sout;
-	HFCallback cb = new HFCallback();
 
-	public HFUncompressData(InputStream sin, OutputStream sout, long compressedSize, byte lastBits)
+	public HFUncompressData(InputStream sin, OutputStream sout, long cSize, long ucSize, byte lastBits)
 	{
-		this.sin = sin;
-		this.sout = sout;
-		sizeCompressed = compressedSize;
+		super(sin, sout, cSize, ucSize);
 		this.lastBits = lastBits;
 	}
 }
 
-class HFCompressData {
-	long CRC32Value;
-	long sizeCompressed; // to know where to stop decoding
-	long sizeUncompressed; // to show compress progress
+class HFCompressData extends CompressData
+{
 	byte lastBits;
-	InputStream sin;
-	OutputStream sout;
-	HFCallback cb = new HFCallback();
 
 	public HFCompressData(InputStream sin, OutputStream sout, long sizeUncomp)
 	{
-		this.sin = sin;
-		this.sout = sout;
-		sizeUncompressed = sizeUncomp;
+		super(sin, sout, sizeUncomp);
 	}
 }
 
-class HFCallback
+class RangeCompressData extends CompressData
 {
-	public void start()
-	{
+	long[] cumFreq;
+	int[] symbol_to_freq_index;
 
+	public RangeCompressData(InputStream sin, OutputStream sout, long sizeUncomp, long[] freq, int[] index)
+	{
+		super(sin, sout, sizeUncomp);
+		cumFreq = freq;
+		symbol_to_freq_index = index;
+	}
+}
+
+class RangeUncompressData extends UncompressData
+{
+	long[] cumFreq;
+	int[] symbols;
+
+	public RangeUncompressData(InputStream sin, OutputStream sout, long cSize, long ucSize, long[] freq, int[] sym)
+	{
+		super(sin, sout, cSize, ucSize);
+		cumFreq = freq;
+		symbols = sym;
 	}
 
-	public void heartBeat(int percent)
-	{
-		System.out.print("\r");
-		System.out.printf("Progress %4d%%...", percent);
-	}
-
-	public void finish()
-	{
-		System.out.println();
-	}
 }
