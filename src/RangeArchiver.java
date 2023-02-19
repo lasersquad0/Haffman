@@ -4,7 +4,8 @@ import java.util.logging.Logger;
 
 public class RangeArchiver extends Archiver
 {
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+	static final char algSymbol = 'A';
 	final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
 	private int[] symbols = {1,2,3,7,10,5};
 	private long[] weights = {3,7,99,55,11,23};
@@ -17,8 +18,10 @@ public class RangeArchiver extends Archiver
 		if(filenames.length < 2)
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
 
+		logger.info("Using Arithmetic Range compression algorithm.");
+
 		HFArchiveHeader fh = new HFArchiveHeader();
-		fh.fillFileRecs(filenames); // that needs to be before creating output stream, to avoid creating empty archive files
+		fh.fillFileRecs(filenames, algSymbol); // that needs stay before creating output stream, to avoid creating empty archive files
 
 		String arcFilename = getArchiveFilename(filenames[0]); 	// first parameter in array is name of archive
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(arcFilename), OUTPUT_BUF_SIZE);
@@ -29,20 +32,24 @@ public class RangeArchiver extends Archiver
 		{
 			HFFileRec fr = fh.files.get(i);
 
-			File fl = new File(fr.fileName);
+			logger.info(String.format("Analysing file '%s'.", fr.origFilename));
+
+			File fl = new File(fr.origFilename); // возможно хранить File в HFFileRec потому как fillFileRecs тоже создаются File
 			int BUFFER = getOptimalBufferSize(fr.fileSize);
 			InputStream sin = new BufferedInputStream(new FileInputStream(fl),BUFFER);
 
 			InputStream sin1 = new BufferedInputStream(new FileInputStream(fl), BUFFER); // stream только для подсчета частот символов
 			calcWeights(sin1);
+			rescaleWeights(RangeCompressor64.BOTTOM); //*****
 			sin1.close();
 
 			saveFreqs(sout);
 
-			logger.info(String.format("Starting compression '%s' ...", fr.fileName));
+			logger.info("Starting compression...");
 
-			var cData = new RangeCompressData(sin, sout, fr.fileSize, cumFreq, symbol_to_freq_index);
-			RangeCompressor c = new RangeCompressor(RangeCompressor.Strategy.RANGEBOTTOM);
+			var cData = new RangeCompressData(sin, sout, fr.fileSize, cumFreq, weights, symbol_to_freq_index);
+			//var c = new RangeCompressor32(RangeCompressor32.Strategy.RANGEBOTTOM);//*******
+			var c = new RangeCompressor64();
 
 			c.compress(cData);
 
@@ -51,7 +58,7 @@ public class RangeArchiver extends Archiver
 
 			sin.close();
 
-			logger.info(String.format("Compression '%s' done.", fr.fileName));
+			printCompressionDone(fr);
 		}
 
 		sout.close();
@@ -81,7 +88,8 @@ public class RangeArchiver extends Archiver
 
 			logger.info(String.format("Extracting file '%s'...", fr.fileName));
 
-			RangeUncompressor uc = new RangeUncompressor();
+			//var uc = new RangeUncompressor32(RangeUncompressor32.Strategy.RANGEBOTTOM);
+			var uc = new RangeUncompressor64();
 			var uData = new RangeUncompressData(sin, sout, fr.compressedSize, fr.fileSize, cumFreq, symbols);
 
 			uc.uncompress(uData);
@@ -103,7 +111,7 @@ public class RangeArchiver extends Archiver
 	{
 		var ds = new DataInputStream(in);
 
-		int count = ds.readByte() + 1; // stored is an INDEX of last element in symbols to fit it in byte, that is why we are adding 1
+		int count = Byte.toUnsignedInt(ds.readByte()) + 1; // stored is an INDEX of last element in symbols to fit it in byte, that is why we are adding 1
 		symbols = new int[count];
 		cumFreq = new long[count + 1];
 
@@ -188,15 +196,44 @@ public class RangeArchiver extends Archiver
 
 			raf.seek(pos + offsets.get(FHeaderOffs.CRC32Value));
 			raf.writeLong(fr.CRC32Value);
+
 			raf.seek(pos + offsets.get(FHeaderOffs.compressedSize));
 			raf.writeLong(fr.compressedSize);
+
 			//raf.seek(pos + offsets.get("lastBits"));
 			//raf.writeByte(fr.lastBits);
+
+			// calculate pos of the next file record, for the next loop iteration
 			pos = pos + offsets.get(FHeaderOffs.FileRecSize) + fr.fileName.length()*2; // length()*2 because writeChars() saves each char as 2 bytes
 		}
 
 		raf.close();
 	}
+
+	protected void rescaleWeights(long bottom)
+	{
+		if (bottom > cumFreq[cumFreq.length - 1])
+			return; // no scaling needed
+
+		long SummFreq;
+		do
+		{
+			SummFreq = 0;
+			for (int i = 0; i < weights.length; i++)
+			{
+				weights[i] -= (weights[i] >> 1); // this formula guarantees that cumFre[i] will not become zero.
+				SummFreq += weights[i];
+			}
+		}while(SummFreq > bottom);
+
+		// updating cumFreq
+		cumFreq[0] = 0;
+		for (int i = 0; i < weights.length; i++)
+		{
+			cumFreq[i + 1] = cumFreq[i] + weights[i];
+		}
+	}
+
 
 	/**
 	 * Читает весь файл и считает частоты встречаемости байтов в нем
