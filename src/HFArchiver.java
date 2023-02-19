@@ -3,7 +3,8 @@ import java.util.logging.*;
 
 public class HFArchiver extends Archiver
 {
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+	static final char algSymbol = 'H';
 	final int OUTPUT_BUF_SIZE = 100_000_000; // если файл >100M, то используем буфер этого размера иначе буфер размера файла
 
 
@@ -12,8 +13,10 @@ public class HFArchiver extends Archiver
 		if(filenames.length < 2)
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
 
+		logger.info("Using Huffman compression algorithm.");
+
 		HFArchiveHeader fh = new HFArchiveHeader();
-		fh.fillFileRecs(filenames); // that needs to be before creating output stream, to avoid creating empty archive files
+		fh.fillFileRecs(filenames, algSymbol); // that needs to be before creating output stream, to avoid creating empty archive files
 
 		String arcFilename = getArchiveFilename(filenames[0]); 	// first parameter in array is name of archive
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(arcFilename), OUTPUT_BUF_SIZE);
@@ -24,9 +27,9 @@ public class HFArchiver extends Archiver
 		{
 			HFFileRec fr = fh.files.get(i);
 
-			logger.info(String.format("Analysing file '%s'.", fr.fileName));
+			logger.info(String.format("Analysing file '%s'.", fr.origFilename));
 
-			File fl = new File(fr.fileName);
+			File fl = new File(fr.origFilename);
 
 			int BUFFER = getOptimalBufferSize(fr.fileSize);
 			InputStream sin1 = new BufferedInputStream(new FileInputStream(fl), BUFFER); // stream только для подсчета весов и далее построения дерева Хаффмана
@@ -53,7 +56,8 @@ public class HFArchiver extends Archiver
 
 			sin2.close();
 
-			logger.info(String.format("Compression '%s' finished.", fr.fileName));
+			printCompressionDone(fr);
+			//logger.info(String.format("Compression '%s' finished.", fr.origFilename));
 		}
 
 		sout.close();
