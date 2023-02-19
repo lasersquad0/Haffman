@@ -3,8 +3,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
-import static org.junit.Assert.*;
-
 public class HFArchiveHeader
 {
 	/*
@@ -18,7 +16,7 @@ public class HFArchiveHeader
 7. Сжатые данные — кол-во сжатых байт сохраняется в таблице файлов
 пункты 6 и 7 повторяются для всех файлов.
 */
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	final byte[] fileSignature = {'R', 'O', 'M', 'A'};
 	final byte[] fileVersion = {'0', '1'};
 	ArrayList<HFFileRec> files = new ArrayList<>();
@@ -30,13 +28,15 @@ public class HFArchiveHeader
 	 */
 	 public void checkHeaderData()
 	{
-		byte[] b = {'R', 'O', 'M', 'A'};
-		assertArrayEquals(b, fileSignature);
+		assert fileSignature[0] == 'R';
+		assert fileSignature[1] == 'O';
+		assert fileSignature[2] == 'M';
+		assert fileSignature[3] == 'A';
 
-		assertTrue((fileVersion[0] >= '0') && (fileVersion[0] <= '9'));
-		assertTrue((fileVersion[1] >= '0') && (fileVersion[1] <= '9'));
+		assert (fileVersion[0] >= '0') && (fileVersion[0] <= '9');
+		assert (fileVersion[1] >= '0') && (fileVersion[1] <= '9');
 
-		assertTrue(files.size() > 0);
+		assert files.size() > 0;
 	}
 
 	public void loadHeader(InputStream sin) throws IOException
@@ -81,7 +81,7 @@ public class HFArchiveHeader
 	 * Adds filenames into ArrayList of HFFileRec together with file lengths and modified attributes
 	 * @param filenames list of files to compress. Note, that zero index in this array contains archive name, so first filename is filenames[1]
 	 */
-	public void fillFileRecs(String[] filenames)
+	public void fillFileRecs(String[] filenames, char alg) 
 	{
 		files.clear();  // just in case
 
@@ -91,10 +91,12 @@ public class HFArchiveHeader
 			if(fl.exists())
 			{
 				HFFileRec fr = new HFFileRec();
-				fr.dirName = fl.getAbsolutePath();
-				fr.fileName = filenames[i];
+				fr.dirName = fl.getAbsolutePath(); // найти как возвращать только директорию. здесь сейчас возвращается весь путь с файлом вместо директории.
+				fr.origFilename = filenames[i];
+				fr.fileName = fl.getName();//filenames[i]; // store name of the file without path
 				fr.fileSize = fl.length();
 				fr.modifiedDate = fl.lastModified(); //another way to do the same is Files.getLastModifiedTime()
+				fr.alg = (byte)alg;
 
 				files.add(fr);
 			}
@@ -112,7 +114,7 @@ public class HFArchiveHeader
 		res.put(FHeaderOffs.CRC32Value, Long.BYTES);
 		res.put(FHeaderOffs.compressedSize, 3*Long.BYTES);
 		res.put(FHeaderOffs.lastBits, 4*Long.BYTES);
-		res.put(FHeaderOffs.FileRecSize, 4*Long.BYTES + Byte.BYTES+ Short.BYTES);
+		res.put(FHeaderOffs.FileRecSize, 4*Long.BYTES + 2*Byte.BYTES+ Short.BYTES); // Short.BYTES - this is for saving filename length
 
 		return res;
 	}
@@ -132,13 +134,16 @@ public class HFArchiveHeader
 
 class HFFileRec
 {
+	// **** Нужно внести изменения в HashMap когда добавляются новые поля сюда!! *********
 	String fileName;
+	String origFilename;
 	String dirName; // for future extensions, not used now
 	long fileSize;
 	long CRC32Value;
 	long modifiedDate;
 	long compressedSize;
 	byte lastBits;
+	byte alg;
 
 	public void save(OutputStream sout) throws IOException
 	{
@@ -149,6 +154,7 @@ class HFFileRec
 		dos.writeLong(modifiedDate);
 		dos.writeLong(compressedSize);
 		dos.writeByte(lastBits);
+		dos.writeByte(alg);
 		dos.writeShort(fileName.length());
 		dos.writeChars(fileName);  // NOTE! writes 2 bytes for each char
 	}
@@ -162,6 +168,7 @@ class HFFileRec
 		modifiedDate = dos.readLong();
 		compressedSize = dos.readLong();
 		lastBits = dos.readByte();
+		alg = dos.readByte();
 
 		int filenameSize = dos.readShort();
 		StringBuilder sb = new StringBuilder(filenameSize);
