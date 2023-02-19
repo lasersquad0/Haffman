@@ -5,7 +5,7 @@ import java.util.zip.CRC32;
 
 public class HFTree
 {
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	protected  int[] symbols; // all symbols that are used in input file
 	protected long[] weights;  //  weights of symbols above
 	protected HFNode treeRoot;
@@ -13,7 +13,6 @@ public class HFTree
 	HashMap<Integer,HFCode> codesMap = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
 	int minCodeLen = Integer.MAX_VALUE; // TODO Кандидат на выброс потому что нигде в алгоритмах сейчас не используется. Ранее использовалось в декодировании
 	int maxCodeLen;     // TODO Кандидат на выброс потому что нигде в алгоритмах сейчас не используется. Ранее использовалось в декодировании
-	//	private final InputStream sin;
 	private final int tableRecSize = 6; // размер одной записи таблицы кодов хаффмана (6=byte+int+byte)
 	long CRC32Value;  // высчитывается в вызове calcWeights() вместе с весами
 

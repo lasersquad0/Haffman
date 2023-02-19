@@ -4,7 +4,7 @@ import java.util.zip.CRC32;
 
 public class RLEUncompressor
 {
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	UncompressData uData;
 	CRC32 crc = new CRC32();
 	long decodedBytes = 0;

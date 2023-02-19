@@ -4,7 +4,7 @@ import java.util.zip.CRC32;
 
 public class RLECompressor {
 
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	CompressData cData;
 	CRC32 crc = new CRC32();
 	public long encodedBytes = 0;
