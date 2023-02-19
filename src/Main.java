@@ -5,7 +5,7 @@ import org.apache.commons.cli.*;
 
 public class Main {
 
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 
 	public static void main(String[] args) throws IOException, ParseException
 	{
@@ -16,21 +16,15 @@ public class Main {
 		//  многопоточность для разных файлов. подумать над многопоточностью для одного файла.
 
 		//Comparator<HfNode> comparator = (o1, o2) -> Integer.compare(o1.weight, o2.weight);
-//		final String FN_TO_COMPRESS   = "voyna-i-mir-tom-1.txt";//"primes - 20000G small.txt"; //"slack.exe";//"primes - 20000-20010G.txt"; //"oneletter.txt"; //"primes - 20000G small.txt"; //"primes - 0-10G.txt";  //Война и мир.txt"; //
-//		final String FN_TO_UNCOMPRESS = "voyna-i-mir-tom-1.hf";//"primes - 20000G small.hf";//"slack.hf"; //"primes - 20000-20010G.hf"; //"oneletter.hf";// "primes - 0-10G.hf"; //Война и мир.hf"; "primes - 20000G small.hf";
-
 
 		InputStream is = Main.class.getResourceAsStream("huffmanlog.properties");
 		if(is != null)
-		{
 			LogManager.getLogManager().readConfiguration(is);
-		}
 		else
-		{
-			logger.info("NULL returned - Main.class.getResourceAsStream(\"huffmanlog.properties\")\n");
-		}
+			logger.fine("NULL returned - Main.class.getResourceAsStream(\"huffmanlog.properties\")");
 
-		logger.info("Huffman archiver. Start.");
+
+		logger.info("ROMA archiver. Start.");
 
 		CommandLine cmd = getCommandLine(args);
 
@@ -38,22 +32,52 @@ public class Main {
 		{
 			String[] ss = cmd.getOptionValues('a');
 			//System.out.println(Arrays.toString(ss));
-			HFArchiver arc = new HFArchiver();
-			arc.compressFile2(ss); 	// Note ss[0] is a name of archive while ss[1], ss[2] and so on - files to be added to archive
+			if(cmd.hasOption("rle"))
+			{
+				var arc = new RLEArchiver();
+				arc.compressFiles(ss);    // Note ss[0] is a name of archive while ss[1], ss[2] and so on - files to be added to archive
+			}
+			else if(cmd.hasOption("range"))
+			{
+				var arc = new RangeArchiver();
+				arc.compressFiles(ss);
+			}
+			else if(cmd.hasOption("ra"))
+			{
+				var arc = new RangeAdaptArchiver();
+				arc.compressFiles(ss);
+			}
+			else // default method is Hyffman
+			{
+				var arc = new HFArchiver();
+				arc.compressFiles(ss);    // Note ss[0] is a name of archive while ss[1], ss[2] and so on - files to be added to archive
+			}
 
-		} else if(cmd.hasOption('x'))
+		} else if(cmd.hasOption('x') || cmd.hasOption('e'))
 		{
 			String[] ss = cmd.getOptionValues('x');
-			HFArchiver arc = new HFArchiver();
-			arc.unCompressFile2(ss[0]);
+			if(cmd.hasOption("rle"))
+			{
+				RLEArchiver arc = new RLEArchiver();
+				arc.unCompressFiles(ss[0]);
+			}
+			else if(cmd.hasOption("range"))
+			{
+				var arc = new RangeArchiver();
+				arc.unCompressFiles(ss[0]);
+			}
+			else if(cmd.hasOption("ra"))
+			{
+				var arc = new RangeAdaptArchiver();
+				arc.unCompressFiles(ss[0]);
+			}
+			else // default method is Hyffman
+			{
+				HFArchiver arc = new HFArchiver();
+				arc.unCompressFiles(ss[0]);
+			}
 
-		} else if(cmd.hasOption('e'))
-		{
-			String[] ss = cmd.getOptionValues('e');
-			HFArchiver arc = new HFArchiver();
-			arc.unCompressFile2(ss[0]);
-
-		}else if(cmd.hasOption('l'))
+		} else if(cmd.hasOption('l'))
 		{
 			String[] ss = cmd.getOptionValues('l');
 			HFArchiver arc = new HFArchiver();
@@ -66,17 +90,22 @@ public class Main {
 			formatter.printHelp("Huffman", options, true);
 		}
 
-		logger.info("Finished.");
+		logger.info("ROMA archiver. Finished.");
 	}
 
 
 	final static Options options = new Options();
 	private static CommandLine getCommandLine(String[] args) throws ParseException
 	{
-		options.addOption("l", true, "Display content of archive");
+
 		options.addOption(Option.builder("a").argName("<archive> <files...>").hasArgs().desc("Add files to archive").build());
 		options.addOption(Option.builder("x").argName("archive").hasArg().desc("Extract files with full path").build());
 		options.addOption(Option.builder("e").argName("archive").hasArg().desc("Extract files without archived paths").build());
+		options.addOption("l", true, "Display content of archive");
+		options.addOption("hf", "huffman", false, "Use Huffman compression method (default)");
+		options.addOption("rle", "runlength", false, "Use RLE (run length encoding) compression method");
+		options.addOption("range", "arithmetic", false, "Use Arithmetic Range compression method");
+		options.addOption("ra", "rangeadaptive", false, "Use Adaptive Arithmetic Range compression method");
 
 		CommandLineParser parser = new DefaultParser();
 
