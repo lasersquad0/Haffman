@@ -3,7 +3,8 @@ import java.util.logging.*;
 
 public class RLEArchiver extends Archiver
 {
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+	static final char algSymbol = 'R';
 	final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
 
 	@Override
@@ -12,8 +13,10 @@ public class RLEArchiver extends Archiver
 		if(filenames.length < 2)
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
 
+		logger.info("Using RLE (run length encoding) compression algorithm.");
+
 		HFArchiveHeader fh = new HFArchiveHeader();
-		fh.fillFileRecs(filenames); // that needs to be before creating output stream, to avoid creating empty archive files
+		fh.fillFileRecs(filenames, algSymbol); // that needs to be before creating output stream, to avoid creating empty archive files
 
 		String arcFilename = getArchiveFilename(filenames[0]); 	// first parameter in array is name of archive
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(arcFilename), OUTPUT_BUF_SIZE);
@@ -24,10 +27,10 @@ public class RLEArchiver extends Archiver
 		{
 			HFFileRec fr = fh.files.get(i);
 
-			File fl = new File(fr.fileName);
+			File fl = new File(fr.origFilename);
 			InputStream sin = new BufferedInputStream(new FileInputStream(fl), getOptimalBufferSize(fr.fileSize));
 
-			logger.info("Starting file compression...");
+			logger.info(String.format("Starting compression '%s'.", fr.origFilename));
 
 			var cData = new CompressData(sin, sout, fr.fileSize);
 			RLECompressor c = new RLECompressor();
@@ -39,7 +42,8 @@ public class RLEArchiver extends Archiver
 
 			sin.close();
 
-			logger.info(String.format("Compression '%s' done.", fr.fileName));
+			printCompressionDone(fr);
+			//logger.info(String.format("Compression '%s' done.", fr.origFilename));
 		}
 
 		sout.close();
