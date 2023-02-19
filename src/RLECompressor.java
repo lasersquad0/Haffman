@@ -19,13 +19,13 @@ public class RLECompressor {
 		// 129 - макс длина цепочки одинаковых символов. Отнимаем 2 от реальной длины
 		// 128 - макс длина цепочки неодинаковых символов. Отнимаем 1 от реальной длины. Два одинаковых подряд включаем в неодинаковые.
 
+		this.cData = cData;
+		encodedBytes = 0;  // сбрасываем счетчики
+
 		assert cData.sizeUncompressed > 0;
 
 		final int MAX_BUF_SIZE= 100_000_000;
 		int WORK_BUFFER = (cData.sizeUncompressed < (long)MAX_BUF_SIZE) ? (int)cData.sizeUncompressed : MAX_BUF_SIZE;
-
-		encodedBytes = 0;  // сбрасываем счетчики
-		this.cData = cData;
 
 		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
 
@@ -110,7 +110,7 @@ public class RLECompressor {
 				int remaining = cntRead - i;
 				System.arraycopy(buf, i, buf,0, remaining);
 				cntRead = cData.sin.read(buf, remaining, buf.length - remaining);
-				crc.update(buf,remaining, buf.length - remaining);
+				crc.update(buf, remaining, buf.length - remaining);
 
 				head = 0;
 				i = 0;
@@ -133,34 +133,3 @@ public class RLECompressor {
 	}
 
 }
-
-/*
-class RLEContext
-{
-	int pos;
-	int head;
-	int cntRead;
-	byte[] buf;
-
-	RLEContext()
-	{
-	}
-	RLEContext(int i, int head, int cntRead, byte[] buf)
-	{
-		pos = i;
-		this.head = head;
-		this.cntRead = cntRead;
-		this.buf = buf;
-	}
-
-	public void fill(int i, int head, int cntRead, byte[] buf)
-	{
-		pos = i;
-		this.head = head;
-		this.cntRead = cntRead;
-		this.buf = buf;
-	}
-}
-
-
- */

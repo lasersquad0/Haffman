@@ -78,7 +78,7 @@ public class RLEUncompressor
 				assert i + 1 + code < buf.length;
 
 				uData.sout.write(buf, i + 1, code + 1);
-				crc.update(buf, i + 1, code +1);
+				crc.update(buf, i + 1, code + 1);
 				i += code + 1 + 1;
 			}
 
