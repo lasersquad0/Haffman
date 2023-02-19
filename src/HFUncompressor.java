@@ -13,9 +13,9 @@ public class HFUncompressor
 
 	public void uncompress(HFTree tree, HFUncompressData uData) throws IOException
 	{
-		decodedBytes = 0;
 		this.tree = tree;
 		this.uData = uData;
+		decodedBytes = 0;
 
 		uncompressInternal();
 
