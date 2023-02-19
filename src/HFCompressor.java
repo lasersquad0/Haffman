@@ -3,7 +3,7 @@ import java.util.logging.Logger;
 
 public class HFCompressor
 {
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	HFTree tree;
 	HFCompressData cData;
 	byte[] writeBuffer = new byte[4];  // буфер для записи int в OutputStream
@@ -28,24 +28,18 @@ public class HFCompressor
 	{
 		logger.entering(this.getClass().getName(),"compressInternal");
 
-		long threshold = 0;
-		long delta = cData.sizeUncompressed/100;
+		delta = cData.sizeUncompressed/100;
 		long total = 0;
 		int ch;
 		int accum = 0;
 		int counter = 0;
 
-		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
+		startProgress();
 
 		while ((ch = cData.sin.read()) != -1)
 		{
-			if((cData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
-			{
-				threshold +=delta;
-				cData.cb.heartBeat((int)(100*threshold/cData.sizeUncompressed));
-			}
+			updateProgress(total++);
 
-			total++;
 			HFCode hfc = tree.codesMap.get(ch);
 
 			if (counter + hfc.len > Integer.SIZE) // новый byte не влазит в остаток слова, делим на 2 части
@@ -90,7 +84,7 @@ public class HFCompressor
 
 		cData.sout.flush();
 
-		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.finish();
+		finishProgress();
 
 		logger.exiting(this.getClass().getName(),"compressInternal");
 	}
@@ -105,6 +99,27 @@ public class HFCompressor
 		encodedBytes += 4;
 	}
 
+	private void startProgress()
+	{
+		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
+	}
+	private void finishProgress()
+	{
+		if (cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.finish();
+	}
+
+	long threshold = 0;
+	long delta;
+
+	private void updateProgress(long total)
+	{
+		if((cData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
+		{
+			threshold += delta;
+			cData.cb.heartBeat((int)(100*threshold/cData.sizeUncompressed));
+		}
+
+	}
 
 }
 
