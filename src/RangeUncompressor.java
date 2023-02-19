@@ -1,26 +1,26 @@
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.logging.Logger;
 import java.util.zip.CRC32;
 
 public class RangeUncompressor
 {
 	public enum Strategy { HIGHBYTE, RANGEBOTTOM }
-	private final static Logger logger = Logger.getLogger("HFLogger");
-	RangeUncompressData uData;
-	CRC32 crc = new CRC32();
-	long decodedBytes = 0;
-	long compressedBytesCounter = 0;
-	final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
-	private long low; //, high;
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+	private long low;
 	private long range;
 	private long nextChar = 0;
-	//final long UPPER = (long)Math.pow(2, 32);//40) - 1; // set all bits to '1' in binary representation. Slightly more than 1_000_000_000_000L
-	final int CODEBITS = 32;
-	final int HIGHBYTE = CODEBITS - 8;
-	final long TOP = 1L << CODEBITS;
-	final long BOTTOM = 1 << (CODEBITS/2);
-	final long MASK2 = 0x00000000FFFFFFFFL;
-	private Strategy strategy;
+	static final int CODEBITS = 48;
+	static final int HIGHBYTE = CODEBITS + 8;
+	static final long TOP = 1L << CODEBITS;
+	static final long TOPTOP = 1L << (CODEBITS + 8);
+	static final long BOTTOM = 1L << (CODEBITS - 8);
+	private UncompressData uData;
+	private ModelOrder0 model;
+	private final CRC32 crc = new CRC32();
+	private long decodedBytes = 0;
+	private final long SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
+	private final Strategy strategy;
 
 	RangeUncompressor(Strategy strategy)
 	{
@@ -32,117 +32,129 @@ public class RangeUncompressor
 		this(Strategy.HIGHBYTE);
 	}
 
-	public void uncompress(UncompressData uuData) throws IOException
+	public void uncompress(UncompressData uuData, ModelOrder0 model) throws IOException
 	{
-		this.uData = (RangeUncompressData) uuData;
-		decodedBytes = 0;
+		this.uData = uuData;
+		this.model = model;
 
 		if(uData.sizeCompressed == 0) // for support of zero-length files
 			return;
 
+		decodedBytes = 0;
+		delta = uData.sizeUncompressed/100;
+
+		startProgress();
+
 		low = 0;
-		range = TOP - 1; // сразу растягиваем на максимальный range
-		long totalFreq = uData.cumFreq[uData.cumFreq.length - 1];
+		range = TOPTOP - 1; // сразу растягиваем на максимальный range
+		//long totalFreq = uData.cumFreq[uData.cumFreq.length - 1];
 
-		logger.finer(String.format("low=%X high=%X, range=%X", low, low + range, range));
+		logger.finer(()->String.format("weights=%s", Arrays.toString(model.weights)));
+		logger.finer(()->String.format("low=%X high=%X, range=%X", low, low + range, range));
 
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
-
-		long threshold = 0;
-		long delta = uData.sizeCompressed/100;
-
-		long c1 = uData.sin.read();
-		long c2 = uData.sin.read();
-		long c3 = uData.sin.read();
-		long c4 = uData.sin.read();
-		nextChar = (c1 << 24) | (c2 << 16) | c3 << 8 | c4;
-
-		compressedBytesCounter = 4;
+		nextChar = 0;
+		for (int i = 0; i < 7; i++) // assumed we have more than 7 compressed bytes in a stream
+		{
+			long ci = uData.sin.read();
+			assert ci != -1;
+			nextChar = (nextChar << 8) | ci;
+		}
 
 		while(decodedBytes < uData.sizeUncompressed)
 		{
-			if((uData.sizeCompressed > SHOW_PROGRESS_AFTER) && (compressedBytesCounter > threshold))
+			updateProgress(decodedBytes);
+
+			range = range / model.totalFreq;
+			long t = (nextChar - low)/range; // ((nextChar - low) * totalFreq) / range;
+
+			assert t < model.totalFreq;
+			/*
+			if(t >= model.totalFreq)
 			{
-				threshold +=delta;
-				uData.cb.heartBeat((int)(100*threshold/uData.sizeCompressed));
-			}
+				logger.warning(String.format("t(%,d) >= totalFreq (%,d)", t, model.totalFreq));
+				t = model.totalFreq - 1;
+			}*/
 
-			long t = ((nextChar - low + 1) * totalFreq - 1) / (range + 1);
-			//logger.fine(String.format("t = 0x%X", uData.symbols[j-1]));
+			//int j = 0;
+			//while ((uData.cumFreq[j] <= t)) j++;
 
-			int j = 0;
-			assert t <= totalFreq;
-			while (/*(j < uData.cumFreq.length) &&*/ (uData.cumFreq[j] <= t)) j++;
+			long[] res = model.getSym(t); //uData.symbols[j - 1];
+			int sym = (int)res[0];
+			long left = res[1]; //uData.cumFreq[j - 1];
+			long freq = model.weights[sym]; //uData.cumFreq[j];
 
-			uData.sout.write(uData.symbols[j-1]);
+			assert( (left + freq <= model.totalFreq) && (freq > 0) && (model.totalFreq <= BOTTOM) );
+
+			low = low + left * range;
+			assert (low & (TOPTOP - 1)) == low: "low is out of bounds!";
+			range = freq * range;
+
+			logger.finer(()->String.format("before scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low + range, range));
+			scale();
+			logger.finer(()->String.format("after  scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low + range, range));
+
+			model.updateStatistics(sym);
+
+			uData.sout.write(sym);
+			crc.update(sym);
 			decodedBytes++;
-
-			logger.finer(String.format("uncompress output byte: 0x%X, count: %,d", uData.symbols[j-1], decodedBytes));
-
-			long left = uData.cumFreq[j - 1];
-			long right = uData.cumFreq[j];
-
-			//long r = range/totalFreq;
-			low = low + ((range+1) * left) / totalFreq;
-			range = ((range+1) * (right - left)) / totalFreq - 1;
-
-			//long range = high - low;
-			//high = low + (range * right) / totalFreq;
-			//low = low + (range * left) / totalFreq;
-
-			logger.finer(String.format("before scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low + range, range));
-
-			switch (strategy)
-			{
-				case HIGHBYTE -> scale();
-				case RANGEBOTTOM -> scale2();
-			}
-
-			logger.finer(String.format("after  scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low+range, range));
+			logger.finer(()->String.format("uncompress output byte: 0x%X, count: %,d", sym, decodedBytes));
 		}
 
 		uData.sout.flush();
 
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
+		finishProgress();
 
 		uData.CRC32Value = crc.getValue();
 	}
 
 	private void scale() throws IOException
 	{
-		//long range = high - low;
-		while( (((low ^ (low + range)) >>> HIGHBYTE) == 0) ) // use highbyte(low)==highbyte(high) strategy
+		boolean outByte = ((low ^ low + range) < TOP);
+		while( outByte || (range < BOTTOM) )
 		{
-			if(compressedBytesCounter < uData.sizeCompressed) // не читаем лишние байты из потока так как там может быть следующий поток
+			if((!outByte) && (range < BOTTOM)) // делает low+range=TOPTOP-1 если low+range было >TOPTOP-1
 			{
-				int ch = uData.sin.read();
-				if (ch == -1) break;
-				compressedBytesCounter++;
-				nextChar = ((nextChar << 8) | ch) & MASK2;
-				low = (low << 8) & MASK2;
-				range = range << 8;
-				assert (range & MASK2) == range;
+				logger.finer(()->String.format("Weird range correction:BEFORE range:%X, BOTTOM: %X", range, BOTTOM));
+				range = BOTTOM - (low & (BOTTOM - 1));
+				logger.finer(()->String.format("Weird range correction:AFTER range:%X, BOTTOM: %X", range, BOTTOM));
+				assert range > 0;
+				assert (((low+range) >>> HIGHBYTE) == 0) || (((low+range) >>> HIGHBYTE) == 1):"low+range is out of bounds3!";
 			}
-			else break;
+
+			int ch = uData.sin.read();
+			if (ch == -1) break;
+			nextChar = (nextChar << 8) | ch;
+			nextChar &= (TOPTOP - 1);
+			range <<= 8;
+			assert (range & (TOPTOP-1)) == range: "range is out of bounds!";
+			low <<= 8;
+			low &= (TOPTOP - 1);
+			// если была хитрая коррекция выше тогда low+range==BOTTOM и после сдвига <<8, log+range==TOP, поэтому в assert добавлена проверка на ==1 это валидное значение
+			assert (((low+range) >>> HIGHBYTE) == 0) || (((low+range) >>> HIGHBYTE) == 1):"low+range is out of bounds2!";
+			outByte = ((low ^ low + range) < TOP);
 		}
-		//high = low + range;
+
 	}
 
-	private void scale2() throws IOException
+	private void startProgress()
 	{
-		while(range <= BOTTOM) // using range<BOTTOM strategy
+		if(uData.sizeUncompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
+	}
+
+	private void finishProgress()
+	{
+		if(uData.sizeUncompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
+	}
+
+	long threshold = 0;
+	long delta;
+	private void updateProgress(long total)
+	{
+		if ((uData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
 		{
-			if(compressedBytesCounter < uData.sizeCompressed) // не читаем лишние байты из потока так как там может быть следующий поток
-			{
-				int ch = uData.sin.read();
-				if (ch == -1) break;
-				compressedBytesCounter++;
-				nextChar = ((nextChar << 8) | ch) & MASK2;
-				low = (low << 8) & MASK2;
-				range = range << 8;
-				assert (range & MASK2) == range;
-			}
-			else break;
+			threshold += delta;
+			uData.cb.heartBeat((int) (100 * threshold / uData.sizeUncompressed));
 		}
 	}
 }
