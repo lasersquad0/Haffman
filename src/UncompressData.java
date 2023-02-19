@@ -49,6 +49,6 @@ class HFCallback
 
 	public void finish()
 	{
-		System.out.println();
+		System.out.print("\r                 \r");
 	}
 }
