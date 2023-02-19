@@ -47,8 +47,14 @@ public class Main {
 				var arc = new RangeAdaptArchiver();
 				arc.compressFiles(ss);
 			}
+			else if(cmd.hasOption("hf"))
+			{
+				var arc = new HFArchiver();
+				arc.compressFiles(ss);    // Note ss[0] is a name of archive while ss[1], ss[2] and so on - files to be added to archive
+			}
 			else // default method is Hyffman
 			{
+				logger.warning("Compression algorithm is not specified, using Huffman by default.");
 				var arc = new HFArchiver();
 				arc.compressFiles(ss);    // Note ss[0] is a name of archive while ss[1], ss[2] and so on - files to be added to archive
 			}
@@ -56,26 +62,7 @@ public class Main {
 		} else if(cmd.hasOption('x') || cmd.hasOption('e'))
 		{
 			String[] ss = cmd.getOptionValues('x');
-			if(cmd.hasOption("rle"))
-			{
-				RLEArchiver arc = new RLEArchiver();
-				arc.unCompressFiles(ss[0]);
-			}
-			else if(cmd.hasOption("range"))
-			{
-				var arc = new RangeArchiver();
-				arc.unCompressFiles(ss[0]);
-			}
-			else if(cmd.hasOption("ra"))
-			{
-				var arc = new RangeAdaptArchiver();
-				arc.unCompressFiles(ss[0]);
-			}
-			else // default method is Hyffman
-			{
-				HFArchiver arc = new HFArchiver();
-				arc.unCompressFiles(ss[0]);
-			}
+			ArchiveManager.uncompressFiles(ss[0]); // it gets info about needed compressor from FileRec of each file in archive, and calls appropriate compressor respectively.
 
 		} else if(cmd.hasOption('l'))
 		{

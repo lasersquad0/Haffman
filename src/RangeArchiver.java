@@ -5,11 +5,11 @@ import java.util.logging.Logger;
 public class RangeArchiver extends Archiver
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	static final char algSymbol = 'A';
-	final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
+	static final Utils.CompressorTypes COMPRESSOR_CODE = Utils.CompressorTypes.ARITHMETIC;
+	private final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
 	private int[] symbols = {1,2,3,7,10,5};
 	private long[] weights = {3,7,99,55,11,23};
-	private long[] cumFreq;
+	private long[] cumFreq = null;
 	private final int[] symbol_to_freq_index = new int[256];
 
 	@Override
@@ -21,7 +21,7 @@ public class RangeArchiver extends Archiver
 		logger.info("Using Arithmetic Range compression algorithm.");
 
 		HFArchiveHeader fh = new HFArchiveHeader();
-		fh.fillFileRecs(filenames, algSymbol); // that needs stay before creating output stream, to avoid creating empty archive files
+		fh.fillFileRecs(filenames, COMPRESSOR_CODE); // that needs stay before creating output stream, to avoid creating empty archive files
 
 		String arcFilename = getArchiveFilename(filenames[0]); 	// first parameter in array is name of archive
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(arcFilename), OUTPUT_BUF_SIZE);
@@ -35,7 +35,7 @@ public class RangeArchiver extends Archiver
 			logger.info(String.format("Analysing file '%s'.", fr.origFilename));
 
 			File fl = new File(fr.origFilename); // возможно хранить File в HFFileRec потому как fillFileRecs тоже создаются File
-			int BUFFER = getOptimalBufferSize(fr.fileSize);
+			int BUFFER = Utils.getOptimalBufferSize(fr.fileSize);
 			InputStream sin = new BufferedInputStream(new FileInputStream(fl),BUFFER);
 
 			InputStream sin1 = new BufferedInputStream(new FileInputStream(fl), BUFFER); // stream только для подсчета частот символов
@@ -63,7 +63,9 @@ public class RangeArchiver extends Archiver
 
 		sout.close();
 
-		updateHeaders(fh, arcFilename);
+		fh.updateHeaders(arcFilename); // it is important to save info into files table that becomes available only after compression
+
+		logger.info("All files are processed.");
 	}
 
 	@Override
@@ -73,7 +75,7 @@ public class RangeArchiver extends Archiver
 
 		File fl = new File(arcFilename);
 		long fileLen = fl.length();
-		InputStream sin = new BufferedInputStream(new FileInputStream(fl), getOptimalBufferSize(fileLen));
+		InputStream sin = new BufferedInputStream(new FileInputStream(fl), Utils.getOptimalBufferSize(fileLen));
 
 		HFArchiveHeader fh = new HFArchiveHeader();
 		fh.loadHeader(sin);
@@ -81,30 +83,34 @@ public class RangeArchiver extends Archiver
 		for (int i = 0; i < fh.files.size(); i++)
 		{
 			HFFileRec fr = fh.files.get(i);
-
-			loadFreqs(sin); //здесь читаем таблицы symbols и cumFreq из потока
-
-			OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), getOptimalBufferSize(fr.fileSize));
-
-			logger.info(String.format("Extracting file '%s'...", fr.fileName));
-
-			//var uc = new RangeUncompressor32(RangeUncompressor32.Strategy.RANGEBOTTOM);
-			var uc = new RangeUncompressor64();
-			var uData = new RangeUncompressData(sin, sout, fr.compressedSize, fr.fileSize, cumFreq, symbols);
-
-			uc.uncompress(uData);
-
-			if (uData.CRC32Value != fr.CRC32Value)
-				logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
-
-			sout.close();
-
-			logger.info(String.format("Extracting '%s' done.", fr.fileName));
+			unCompressFile(fr, sin);
 		}
 
 		sin.close();
 
 		logger.info("All files are extracted.");
+	}
+
+	@Override
+	public void unCompressFile(HFFileRec fr, InputStream sin) throws IOException
+	{
+		logger.info(String.format("Extracting file '%s'...", fr.fileName));
+
+		loadFreqs(sin); //здесь читаем таблицы symbols и cumFreq из потока
+
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), Utils.getOptimalBufferSize(fr.fileSize));
+
+		var uc = new RangeUncompressor64();
+		var uData = new RangeUncompressData(sin, sout, fr.compressedSize, fr.fileSize, cumFreq, symbols);
+
+		uc.uncompress(uData);
+
+		if (uData.CRC32Value != fr.CRC32Value)
+			logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
+
+		sout.close();
+
+		logger.info(String.format("Extracting '%s' done.", fr.fileName));
 	}
 
 	private void loadFreqs(InputStream in) throws IOException
@@ -181,6 +187,7 @@ public class RangeArchiver extends Archiver
 	 * @param arcFilename Name of the archive
 	 * @throws IOException if something goes wrong
 	 */
+	/*
 	@Override
 	public void updateHeaders(HFArchiveHeader fh, String arcFilename) throws IOException
 	{
@@ -209,7 +216,7 @@ public class RangeArchiver extends Archiver
 
 		raf.close();
 	}
-
+*/
 	protected void rescaleWeights(long bottom)
 	{
 		if (bottom > cumFreq[cumFreq.length - 1])

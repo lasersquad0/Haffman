@@ -5,13 +5,12 @@ import java.util.logging.Logger;
 public abstract class Archiver
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	final int MAX_BUF_SIZE = 100_000_000; // если файл >100M, то используем буфер этого размера иначе буфер размера файла
-	final int MIN_BUF_SIZE = 1_000; // if accidentally filesize==0, use small buffer
 	private static final String HF_ARCHIVE_EXT = ".hf";
 
 	abstract void compressFiles(String[] filenames) throws IOException;
 	abstract void unCompressFiles(String arcFilename) throws IOException;
-	abstract void updateHeaders(HFArchiveHeader fh, String arcFilename) throws IOException;
+	abstract void unCompressFile(HFFileRec fr, InputStream sin) throws IOException;
+	//abstract void updateHeaders(HFArchiveHeader fh, String arcFilename) throws IOException;
 
 	protected String getArchiveFilename(String arcParam)
 	{
@@ -27,12 +26,6 @@ public abstract class Archiver
 		return arcParam + HF_ARCHIVE_EXT;
 	}
 
-	protected int getOptimalBufferSize(long fileLen)
-	{
-		int FILE_BUFFER = (fileLen < MAX_BUF_SIZE) ? (int) fileLen : MAX_BUF_SIZE;
-		FILE_BUFFER = (fileLen == 0) ? MIN_BUF_SIZE : FILE_BUFFER; // for support of rare zero length files
-		return FILE_BUFFER;
-	}
 
 	public void listFiles(String arcFilename) throws IOException
 	{
@@ -49,7 +42,7 @@ public abstract class Archiver
 		{
 			HFFileRec fr = fh.files.get(i);
 			float ratio = 100*(float)fr.compressedSize/(float)fr.fileSize;
-			System.out.printf("%-49s %,18d %,15d %4c %7.1f%% %18s %13d%n", truncate(fr.fileName, 49), fr.fileSize, fr.compressedSize, fr.alg, ratio, dt.format(fr.modifiedDate), fr.CRC32Value);
+			System.out.printf("%-49s %,18d %,15d %4s %7.1f%% %18s %13d%n", truncate(fr.fileName, 49), fr.fileSize, fr.compressedSize, getCompressorSym(fr.alg), ratio, dt.format(fr.modifiedDate), fr.CRC32Value);
 		}
 
 		sin.close();
@@ -60,12 +53,26 @@ public abstract class Archiver
 		return (str.length() > len) ? str.substring(0, len - 3) + "..." : str;
 	}
 
+	private static String getCompressorSym(byte code)
+	{
+		switch(code)
+		{
+			case 1 -> { return "HUF"; }  // Huffman alg
+			case 2 -> { return "ARI"; }  // range/arithmetic alg
+			case 3 -> { return "RLE"; }  // RLE alg
+			case 4 -> { return "ARA"; }  // Adapting Arithmetic alg
+			case 5 -> { return "A32"; }  // 32bit Arithmetic alg
+			case 6 -> { return "A64"; }  // 64bit Arithmetic alg
+			default -> throw new IllegalStateException("Unexpected value: " + code);
+		}
+	}
+
 	protected void printCompressionDone(HFFileRec fr)
 	{
 		logger.info(String.format("Done compression '%s'.", fr.origFilename));
-		logger.info(String.format("%-16s %,d bytes.", "File size:", fr.fileSize));
-		logger.info(String.format("%-16s %,d bytes.", "Compressed size:", fr.compressedSize));
-		logger.info(String.format("%-16s %.1f%%.", "Ratio:", 100*(float)fr.compressedSize/(float)fr.fileSize));
+		logger.info(String.format("%-15s %,d bytes.", "File size", fr.fileSize));
+		logger.info(String.format("%-15s %,d bytes.", "Compressed size", fr.compressedSize));
+		logger.info(String.format("%-15s %.1f%%.", "Ratio", 100*(float)fr.compressedSize/(float)fr.fileSize));
 		logger.info("------------------------------");
 	}
 

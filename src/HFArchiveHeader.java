@@ -1,6 +1,5 @@
 import java.io.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.logging.Logger;
 
 public class HFArchiveHeader
@@ -81,7 +80,7 @@ public class HFArchiveHeader
 	 * Adds filenames into ArrayList of HFFileRec together with file lengths and modified attributes
 	 * @param filenames list of files to compress. Note, that zero index in this array contains archive name, so first filename is filenames[1]
 	 */
-	public void fillFileRecs(String[] filenames, char alg)
+	public void fillFileRecs(String[] filenames, Utils.CompressorTypes alg)
 	{
 		files.clear();  // just in case
 
@@ -96,7 +95,7 @@ public class HFArchiveHeader
 				fr.fileName = fl.getName();//filenames[i]; // store name of the file without path
 				fr.fileSize = fl.length();
 				fr.modifiedDate = fl.lastModified(); //another way to do the same is Files.getLastModifiedTime()
-				fr.alg = (byte)alg;
+				fr.alg = (byte)alg.ordinal();
 
 				files.add(fr);
 			}
@@ -107,7 +106,44 @@ public class HFArchiveHeader
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
 	}
 
-	public HashMap<FHeaderOffs,Integer> getFieldOffsets()
+	/**
+	 * записываем в архив размер закодированного потока в байтах и lastBits для каждого файла в архиве
+	 * @param arcFilename Name of the archive
+	 * @throws IOException if something goes wrong
+	 */
+	public void updateHeaders( String arcFilename) throws IOException
+	{
+		RandomAccessFile raf = new RandomAccessFile(new File(arcFilename), "rw");
+
+		int InitialOffset = fileSignature.length + fileVersion.length + Short.BYTES; // start of files table in an archive
+		int CRC32ValueOffset = Long.BYTES;
+		int CompressedSizeOffset = 3*Long.BYTES;
+		int LastBitsOffset = 4*Long.BYTES;
+		int FileRecSize = 4*Long.BYTES + 2*Byte.BYTES + Short.BYTES;  // Short.BYTES - this is for saving filename length
+
+		//var offsets = getFieldOffsets();
+
+		int pos = InitialOffset; //offsets.get(FHeaderOffs.InitialOffset);
+
+		for (HFFileRec fr : files)
+		{
+			raf.seek(pos + CRC32ValueOffset); //offsets.get(FHeaderOffs.CRC32Value));
+			raf.writeLong(fr.CRC32Value);
+
+			raf.seek(pos + CompressedSizeOffset); //offsets.get(FHeaderOffs.compressedSize));
+			raf.writeLong(fr.compressedSize);
+
+			raf.seek(pos + LastBitsOffset); //offsets.get(FHeaderOffs.lastBits));
+			raf.writeByte(fr.lastBits);
+
+			pos = pos + FileRecSize /*offsets.get(FHeaderOffs.FileRecSize)*/ + fr.fileName.length() * 2; // length()*2 because writeChars() saves each char as 2 bytes
+		}
+
+		raf.close();
+	}
+
+	/*
+	private HashMap<FHeaderOffs,Integer> getFieldOffsets()
 	{
 		var res = new HashMap<FHeaderOffs, Integer>();
 		res.put(FHeaderOffs.InitialOffset, fileSignature.length + fileVersion.length + Short.BYTES); // initial fixed offset
@@ -118,7 +154,7 @@ public class HFArchiveHeader
 
 		return res;
 	}
-
+*/
 }
 
 /*
@@ -182,6 +218,7 @@ class HFFileRec
 	}
 }
 
+/*
 enum FHeaderOffs
 {
 	InitialOffset,
@@ -190,3 +227,4 @@ enum FHeaderOffs
 	lastBits,
 	FileRecSize
 }
+*/

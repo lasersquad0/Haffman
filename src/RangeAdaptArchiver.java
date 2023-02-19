@@ -4,7 +4,7 @@ import java.util.logging.Logger;
 public class RangeAdaptArchiver extends Archiver
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	static final char algSymbol = 'D';
+	static final Utils.CompressorTypes COMPRESSOR_CODE = Utils.CompressorTypes.AARITHMETIC;
 	final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
 	private ModelOrder0 model;
 
@@ -17,7 +17,7 @@ public class RangeAdaptArchiver extends Archiver
 		logger.info("Using Adaptive Arithmetic Range compression algorithm.");
 
 		HFArchiveHeader fh = new HFArchiveHeader();
-		fh.fillFileRecs(filenames, algSymbol); // that needs stay before creating output stream, to avoid creating empty archive files
+		fh.fillFileRecs(filenames, COMPRESSOR_CODE); // that needs stay here before creating output stream, to avoid creating empty archive files
 
 		String arcFilename = getArchiveFilename(filenames[0]); 	// first parameter in array is name of archive
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(arcFilename), OUTPUT_BUF_SIZE);
@@ -31,7 +31,7 @@ public class RangeAdaptArchiver extends Archiver
 
 		sout.close();
 
-		updateHeaders(fh, arcFilename);
+		fh.updateHeaders(arcFilename); // it is important to save info into files table that becomes available only after compression
 
 		logger.info("All files are processed.");
 	}
@@ -41,7 +41,7 @@ public class RangeAdaptArchiver extends Archiver
 		logger.info(String.format("Starting compression '%s' ...", fr.origFilename));
 
 		File fl = new File(fr.origFilename);
-		InputStream sin = new BufferedInputStream(new FileInputStream(fl), getOptimalBufferSize(fr.fileSize));
+		InputStream sin = new BufferedInputStream(new FileInputStream(fl), Utils.getOptimalBufferSize(fr.fileSize));
 
 		var model = new ModelOrder0(RangeCompressor.BOTTOM);
 		var cData = new CompressData(sin, sout, fr.fileSize);
@@ -65,7 +65,7 @@ public class RangeAdaptArchiver extends Archiver
 
 		File fl = new File(arcFilename);
 		long fileLen = fl.length();
-		InputStream sin = new BufferedInputStream(new FileInputStream(fl), getOptimalBufferSize(fileLen));
+		InputStream sin = new BufferedInputStream(new FileInputStream(fl), Utils.getOptimalBufferSize(fileLen));
 
 		HFArchiveHeader fh = new HFArchiveHeader();
 		fh.loadHeader(sin);
@@ -73,27 +73,32 @@ public class RangeAdaptArchiver extends Archiver
 		for (int i = 0; i < fh.files.size(); i++)
 		{
 			HFFileRec fr = fh.files.get(i);
-
-			OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), getOptimalBufferSize(fr.fileSize));
-
-			logger.info(String.format("Extracting file '%s'...", fr.fileName));
-
-			var uc = new RangeUncompressor();
-			var uData = new UncompressData(sin, sout, fr.compressedSize, fr.fileSize);
-			var model = new ModelOrder0(RangeCompressor.BOTTOM);
-			uc.uncompress(uData, model);
-
-			if (uData.CRC32Value != fr.CRC32Value)
-				logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
-
-			sout.close();
-
-			logger.info(String.format("Extracting '%s' done.", fr.fileName));
+			unCompressFile(fr, sin);
 		}
 
 		sin.close();
 
 		logger.info("All files are extracted.");
+	}
+
+	@Override
+	public void unCompressFile(HFFileRec fr, InputStream sin) throws IOException
+	{
+		logger.info(String.format("Extracting file '%s'...", fr.fileName));
+
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), Utils.getOptimalBufferSize(fr.fileSize));
+
+		var uc = new RangeUncompressor();
+		var uData = new UncompressData(sin, sout, fr.compressedSize, fr.fileSize);
+		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		uc.uncompress(uData, model);
+
+		if (uData.CRC32Value != fr.CRC32Value)
+			logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
+
+		sout.close();
+
+		logger.info(String.format("Extracting '%s' done.", fr.fileName));
 	}
 
 	/**
@@ -102,6 +107,7 @@ public class RangeAdaptArchiver extends Archiver
 	 * @param arcFilename Name of the archive
 	 * @throws IOException if something goes wrong
 	 */
+	/*
 	@Override
 	public void updateHeaders(HFArchiveHeader fh, String arcFilename) throws IOException
 	{
@@ -127,5 +133,6 @@ public class RangeAdaptArchiver extends Archiver
 
 		raf.close();
 	}
+	 */
 }
 
