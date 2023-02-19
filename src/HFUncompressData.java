@@ -25,12 +25,14 @@ class HFCompressData extends CompressData
 class RangeCompressData extends CompressData
 {
 	long[] cumFreq;
+	long[] weights;
 	int[] symbol_to_freq_index;
 
-	public RangeCompressData(InputStream sin, OutputStream sout, long sizeUncomp, long[] freq, int[] index)
+	public RangeCompressData(InputStream sin, OutputStream sout, long sizeUncomp, long[] freq, long[] w, int[] index)
 	{
 		super(sin, sout, sizeUncomp);
 		cumFreq = freq;
+		weights = w;
 		symbol_to_freq_index = index;
 	}
 }
