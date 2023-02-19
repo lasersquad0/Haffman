@@ -81,7 +81,7 @@ public class HFArchiveHeader
 	 * Adds filenames into ArrayList of HFFileRec together with file lengths and modified attributes
 	 * @param filenames list of files to compress. Note, that zero index in this array contains archive name, so first filename is filenames[1]
 	 */
-	public void fillFileRecs(String[] filenames, char alg) 
+	public void fillFileRecs(String[] filenames, char alg)
 	{
 		files.clear();  // just in case
 
