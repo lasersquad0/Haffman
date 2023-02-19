@@ -4,7 +4,7 @@ import java.util.zip.CRC32;
 
 public class HFUncompressor
 {
-	private final static Logger logger = Logger.getLogger("HFLogger");
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	HFTree tree;
 	HFUncompressData uData;
 	CRC32 crc = new CRC32();
