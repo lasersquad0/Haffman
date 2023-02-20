@@ -12,8 +12,9 @@ public class RLEUncompressor
 
 	public void uncompress(UncompressData uData) throws IOException
 	{
-		decodedBytes = 0;
 		this.uData = uData;
+		decodedBytes = 0;
+		delta = uData.sizeCompressed/100;
 
 		uncompressInternal();
 
@@ -34,16 +35,12 @@ public class RLEUncompressor
 		final int MAX_BUF_SIZE= 100_000_000;
 		int WORK_BUFFER = (uData.sizeCompressed < (long)MAX_BUF_SIZE) ? (int)uData.sizeCompressed : MAX_BUF_SIZE;
 
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
-
-		long threshold = 0;
-		long delta = uData.sizeCompressed/100;
+		startProgress();
 
 		byte[] buf = new byte[WORK_BUFFER];
-		int cntRead;
 		int i = 0;
 
-		cntRead = uData.sin.read(buf, 0, (int)Math.min((long)buf.length, uData.sizeCompressed));
+		int cntRead = uData.sin.read(buf, 0, (int)Math.min((long)buf.length, uData.sizeCompressed));
 		if(cntRead == -1) return; // cannot read anything from the stream
 
 		assert cntRead == (int)Math.min((long)buf.length, uData.sizeCompressed);
@@ -53,11 +50,7 @@ public class RLEUncompressor
 
 		while(true/*encodedBytes < uData.sizeCompressed*/)
 		{
-			if ((uData.sizeCompressed > SHOW_PROGRESS_AFTER) && (encodedBytes > threshold))
-			{
-				threshold += delta;
-				uData.cb.heartBeat((int) (100 * threshold / uData.sizeCompressed));
-			}
+			updateProgress(encodedBytes);
 
 			byte code = buf[i];
 			if(Byte.toUnsignedInt(code) > 127)
@@ -112,8 +105,27 @@ public class RLEUncompressor
 
 		uData.sout.flush();
 
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
+		finishProgress();
+	}
 
+	long threshold = 0;
+	long delta;
+	private void updateProgress(long encodedBytes)
+	{
+		if ((uData.sizeCompressed > SHOW_PROGRESS_AFTER) && (encodedBytes > threshold))
+		{
+			threshold += delta;
+			uData.cb.heartBeat((int) (100 * threshold / uData.sizeCompressed));
+		}
+	}
+	private void startProgress()
+	{
+		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
+	}
+
+	private void finishProgress()
+	{
+		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
 	}
 
 }

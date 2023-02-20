@@ -3,34 +3,30 @@ import java.util.logging.Logger;
 import java.util.zip.CRC32;
 
 public class RLECompressor {
-
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	CompressData cData;
 	CRC32 crc = new CRC32();
 	public long encodedBytes = 0;
-	final long SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
 	final int EQUALS_MAXLEN = 129;
 	final int UNEQUALS_MAXLEN = 128;
 
-	public void compress(CompressData cData) throws IOException
+	public void compress(CompressData ccData) throws IOException
 	{
 		// старший бит=1 (|0x80)- означает что далее идут одинаковые символы.
 		// (старший бит=0)- означает что далее идет последовательность неодинаковых символов
 		// 129 - макс длина цепочки одинаковых символов. Отнимаем 2 от реальной длины
 		// 128 - макс длина цепочки неодинаковых символов. Отнимаем 1 от реальной длины. Два одинаковых подряд включаем в неодинаковые.
 
-		this.cData = cData;
+		this.cData = ccData;
 		encodedBytes = 0;  // сбрасываем счетчики
+		delta = cData.sizeUncompressed/100;
 
 		assert cData.sizeUncompressed > 0;
 
 		final int MAX_BUF_SIZE= 100_000_000;
 		int WORK_BUFFER = (cData.sizeUncompressed < (long)MAX_BUF_SIZE) ? (int)cData.sizeUncompressed : MAX_BUF_SIZE;
 
-		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
-
-		long threshold = 0;
-		long delta = cData.sizeUncompressed/100;
+		startProgress();
 
 		byte[] buf = new byte[WORK_BUFFER];
 		int cntRead;
@@ -46,12 +42,7 @@ public class RLECompressor {
 
 		while(true)
 		{
-			if ((cData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
-			{
-				threshold += delta;
-				cData.cb.heartBeat((int) (100 * threshold / cData.sizeUncompressed));
-			}
-
+			updateProgress(total);
 
 			while ((i - head < UNEQUALS_MAXLEN) && (i < cntRead - 2))
 			{
@@ -110,7 +101,7 @@ public class RLECompressor {
 				int remaining = cntRead - i;
 				System.arraycopy(buf, i, buf,0, remaining);
 				cntRead = cData.sin.read(buf, remaining, buf.length - remaining);
-				crc.update(buf, remaining, buf.length - remaining);
+				if(cntRead !=-1) crc.update(buf, remaining, Math.min(buf.length - remaining, cntRead));
 
 				head = 0;
 				i = 0;
@@ -126,10 +117,32 @@ public class RLECompressor {
 
 		cData.sout.flush();
 
-		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.finish();
+		finishProgress();
 
 		cData.sizeCompressed = encodedBytes;
 		cData.CRC32Value = crc.getValue();
+	}
+
+	long threshold = 0;
+	long delta;
+	final long SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
+	private void updateProgress(long total)
+	{
+		if ((cData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
+		{
+			threshold += delta;
+			cData.cb.heartBeat((int) (100 * threshold / cData.sizeUncompressed));
+		}
+	}
+
+	private void finishProgress()
+	{
+		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.finish();
+	}
+
+	private void startProgress()
+	{
+		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
 	}
 
 }
