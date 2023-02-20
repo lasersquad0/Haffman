@@ -26,25 +26,20 @@ public class HFUncompressor
 	{
 		logger.entering(this.getClass().getName(),"uncompressInternal");
 
-		long threshold = 0;
-		long delta = uData.sizeCompressed/100;
-		final int i32 = Integer.SIZE; // просто для удобства чтения
+		delta = uData.sizeCompressed/100;
+		final int i32 = Integer.SIZE; // just for convenience
 		int bitsToParse = i32;
 		long encodedBytes = 0;
 		int mask;
 		int data;
 		int data2 = 0;
-		int remaining = Integer.SIZE;
+		int remaining = i32;
 
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
+		startProgress();
 
 		while (encodedBytes < uData.sizeCompressed) // заканчиваем раскодировать как только кончились байты
 		{
-			if((uData.sizeCompressed > SHOW_PROGRESS_AFTER) && (encodedBytes > threshold))
-			{
-				threshold +=delta;
-				uData.cb.heartBeat((int)(100*threshold/uData.sizeCompressed));
-			}
+			updateProgress(encodedBytes);
 
 			// вот так хитро читаем int из потока
 			int ch1 = uData.sin.read();
@@ -58,11 +53,11 @@ public class HFUncompressor
 
 			if(encodedBytes >= uData.sizeCompressed) // вычитали последний int который нужно парсить не полностью
 			{
-				assert uData.lastBits <= Integer.SIZE;
+				assert uData.lastBits <= i32;
 				bitsToParse = uData.lastBits;
 			}
 
-			data =  ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+			data = ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + ch4);
 
 			if(remaining < i32) // есть остатки с прошлого байта они в data2
 			{
@@ -125,10 +120,11 @@ public class HFUncompressor
 
 		uData.sout.flush();
 
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
+		finishProgress();
 
 		logger.exiting(this.getClass().getName(),"uncompressInternal");
 	}
+
 
 	private int parseInt(int code) throws IOException
 	{
@@ -184,6 +180,27 @@ public class HFUncompressor
 		uData.sout.write(v);
 		crc.update(v);
 		decodedBytes++;
+	}
+
+	private void startProgress()
+	{
+		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
+	}
+
+	private void finishProgress()
+	{
+		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
+	}
+
+	long threshold = 0;
+	long delta;
+	private void updateProgress(long encodedBytes)
+	{
+		if((uData.sizeCompressed > SHOW_PROGRESS_AFTER) && (encodedBytes > threshold))
+		{
+			threshold += delta;
+			uData.cb.heartBeat((int)(100*threshold/uData.sizeCompressed));
+		}
 	}
 
 
