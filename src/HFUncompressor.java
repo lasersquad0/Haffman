@@ -9,7 +9,6 @@ public class HFUncompressor
 	HFUncompressData uData;
 	CRC32 crc = new CRC32();
 	long decodedBytes = 0;
-	final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
 
 	public void uncompress(HFTree tree, HFUncompressData uData) throws IOException
 	{
@@ -37,7 +36,7 @@ public class HFUncompressor
 
 		startProgress();
 
-		while (encodedBytes < uData.sizeCompressed) // заканчиваем раскодировать как только кончились байты
+		while(encodedBytes < uData.sizeCompressed) // заканчиваем раскодировать как только кончились байты
 		{
 			updateProgress(encodedBytes);
 
@@ -46,10 +45,9 @@ public class HFUncompressor
 			int ch2 = uData.sin.read();
 			int ch3 = uData.sin.read();
 			int ch4 = uData.sin.read();
-			if ((ch1 | ch2 | ch3 | ch4) < 0)
-				break;
+			if ((ch1 | ch2 | ch3 | ch4) < 0) break;
 
-			encodedBytes +=4;   // считаем сколько encoded bytes прочитали и потока и сравниваем с размером fileSizeComp что бы вовремя остановиться.
+			encodedBytes +=4;   // считаем сколько encoded bytes прочитали и потока и сравниваем с размером sizeCompressed что бы вовремя остановиться.
 
 			if(encodedBytes >= uData.sizeCompressed) // вычитали последний int который нужно парсить не полностью
 			{
@@ -184,19 +182,19 @@ public class HFUncompressor
 
 	private void startProgress()
 	{
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
+		if(uData.sizeCompressed > Utils.SHOW_PROGRESS_AFTER) uData.cb.start();
 	}
 
 	private void finishProgress()
 	{
-		if(uData.sizeCompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
+		if(uData.sizeCompressed > Utils.SHOW_PROGRESS_AFTER) uData.cb.finish();
 	}
 
 	long threshold = 0;
 	long delta;
 	private void updateProgress(long encodedBytes)
 	{
-		if((uData.sizeCompressed > SHOW_PROGRESS_AFTER) && (encodedBytes > threshold))
+		if((uData.sizeCompressed > Utils.SHOW_PROGRESS_AFTER) && (encodedBytes > threshold))
 		{
 			threshold += delta;
 			uData.cb.heartBeat((int)(100*threshold/uData.sizeCompressed));
