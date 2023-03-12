@@ -4,8 +4,19 @@ import java.util.logging.*;
 public class RLEArchiver extends Archiver
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	static final Utils.CompressorTypes COMPRESSOR_CODE = Utils.CompressorTypes.RLE;
 	final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
+
+	RLEArchiver()
+	{
+		this(Utils.CompTypes.RLE);
+	}
+	RLEArchiver(Utils.CompTypes compCode)
+	{
+		if(compCode != Utils.CompTypes.RLE)
+			throw new IllegalArgumentException(String.format("Incorrect compressor type '%s' is specified for '%s' compressor.", compCode.toString(), this.getClass().getName()));
+
+		COMPRESSOR_CODE = compCode;
+	}
 
 	@Override
 	public void compressFiles(String[] filenames) throws IOException
@@ -25,31 +36,37 @@ public class RLEArchiver extends Archiver
 
 		for (int i = 0; i < fh.files.size(); i++)
 		{
-			HFFileRec fr = fh.files.get(i);
-
-			File fl = new File(fr.origFilename);
-			InputStream sin = new BufferedInputStream(new FileInputStream(fl), Utils.getOptimalBufferSize(fr.fileSize));
-
-			logger.info(String.format("Starting compression '%s'.", fr.origFilename));
-
-			var cData = new CompressData(sin, sout, fr.fileSize);
-			RLECompressor c = new RLECompressor();
-
-			c.compress(cData);
-
-			fr.compressedSize = cData.sizeCompressed;
-			fr.CRC32Value = cData.CRC32Value;
-
-			sin.close();
-
-			printCompressionDone(fr);
-			//logger.info(String.format("Compression '%s' done.", fr.origFilename));
+			compressFile(sout, fh.files.get(i));
 		}
 
 		sout.close();
 
 		fh.updateHeaders(arcFilename); // it is important to save info into files table that becomes available only after compression
 		logger.info("All files are processed.");
+	}
+
+	private void compressFile(OutputStream sout, HFFileRec fr) throws IOException
+	{
+		logger.info(String.format("Starting compression '%s'.", fr.origFilename));
+
+		File fl = new File(fr.origFilename);
+		InputStream sin = new BufferedInputStream(new FileInputStream(fl), Utils.getOptimalBufferSize(fr.fileSize));
+
+		//var cData = new CompressData(sin, sout, fr.fileSize);
+		RLECompressor cp = new RLECompressor();
+
+		var bm = new BlockManager();
+		bm.compressFile(fr, sout, cp);
+
+		//cp.compress(cData);
+
+		//fr.compressedSize = cData.sizeCompressed;
+		//fr.CRC32Value = cData.CRC32Value;
+
+		sin.close();
+
+		printCompressionDone(fr);
+		//logger.info(String.format("Compression '%s' done.", fr.origFilename));
 	}
 
 	@Override
@@ -66,8 +83,7 @@ public class RLEArchiver extends Archiver
 
 		for (int i = 0; i < fh.files.size(); i++)
 		{
-			HFFileRec fr = fh.files.get(i);
-			unCompressFile(fr, sin);
+			unCompressFile(fh.files.get(i), sin);
 		}
 
 		sin.close();
@@ -82,53 +98,21 @@ public class RLEArchiver extends Archiver
 
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), Utils.getOptimalBufferSize(fr.fileSize));
 
-		RLEUncompressor uc = new RLEUncompressor();
-		UncompressData uData = new UncompressData(sin, sout, fr.compressedSize, fr.fileSize);
+		var uc = new RLEUncompressor();
+		//var uData = new CompressData(sin, sout, fr.compressedSize, fr.fileSize);
 
-		uc.uncompress(uData);
+		var bm = new BlockManager();
+		bm.uncompressFile(fr, sin, sout, uc);
 
-		if (uData.CRC32Value != fr.CRC32Value)
-			logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
+		//uc.uncompress(uData);
+
+		//if (uData.CRC32Value != fr.CRC32Value)
+		//	logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
 
 		sout.close();
 
-		logger.info(String.format("Extracting '%s' done.", fr.fileName));
+		logger.info(String.format("Extracting done '%s'.", fr.fileName));
 	}
 
-	/**
-	 * записываем в архив размер закодированного потока в байтах и lastBits для каждого файла в архиве
-	 * @param fh Header with correct compressedSize, lastBits and CRC32Values
-	 * @param arcFilename Name of the archive
-	 * @throws IOException if something goes wrong
-	 */
-	/*
-	@Override
-	public void updateHeaders(HFArchiveHeader fh, String arcFilename) throws IOException
-	{
-		RandomAccessFile raf = new RandomAccessFile(new File(arcFilename), "rw");
-
-		var offsets = fh.getFieldOffsets();
-
-		int pos = offsets.get(FHeaderOffs.InitialOffset);
-
-		for (int i = 0; i < fh.files.size(); i++)
-		{
-			HFFileRec fr = fh.files.get(i);
-
-			raf.seek(pos + offsets.get(FHeaderOffs.CRC32Value));
-			raf.writeLong(fr.CRC32Value);
-
-			raf.seek(pos + offsets.get(FHeaderOffs.compressedSize));
-			raf.writeLong(fr.compressedSize);
-
-			//raf.seek(pos + offsets.get("lastBits"));
-			//raf.writeByte(fr.lastBits);
-
-			pos = pos + offsets.get(FHeaderOffs.FileRecSize) + fr.fileName.length()*2; // length()*2 because writeChars() saves each char as 2 bytes
-		}
-
-		raf.close();
-	}
-*/
 }
 
