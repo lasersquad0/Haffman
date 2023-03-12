@@ -6,6 +6,7 @@ public abstract class Archiver
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	private static final String HF_ARCHIVE_EXT = ".hf";
+	protected Utils.CompTypes COMPRESSOR_CODE; // see default constructor
 
 	abstract void compressFiles(String[] filenames) throws IOException;
 	abstract void unCompressFiles(String arcFilename) throws IOException;
@@ -27,7 +28,7 @@ public abstract class Archiver
 	}
 
 
-	public void listFiles(String arcFilename) throws IOException
+	public void listFiles(String arcFilename, boolean verbose) throws IOException
 	{
 		File fl = new File(arcFilename);
 		InputStream sin = new BufferedInputStream(new FileInputStream(fl), 2_000);
@@ -35,14 +36,39 @@ public abstract class Archiver
 		HFArchiveHeader fh = new HFArchiveHeader();
 		fh.loadHeader(sin);
 
-		System.out.printf("%-49s %18s %15s %4s %7s %18s %13s%n", "File name", "File size", "Compressed", "Alg", "Ratio", "Modified", "CRC32");
+		System.out.printf("%-46s %18s %15s %7s %6s %7s %18s %13s%n", "File name", "File size", "Compressed", "Blocks", "Alg", "Ratio", "Modified", "CRC32");
 		var dt = new SimpleDateFormat("MM/dd/yyyy HH:mm");
 
 		for (int i = 0; i < fh.files.size(); i++)
 		{
 			HFFileRec fr = fh.files.get(i);
-			float ratio = 100*(float)fr.compressedSize/(float)fr.fileSize;
-			System.out.printf("%-49s %,18d %,15d %4s %7.1f%% %18s %13d%n", truncate(fr.fileName, 49), fr.fileSize, fr.compressedSize, getCompressorSym(fr.alg), ratio, dt.format(fr.modifiedDate), fr.CRC32Value);
+			float ratio = (float)fr.fileSize/(float)fr.compressedSize;
+			System.out.printf("%-46s %,18d %,15d %,7d %6s %7.2f %18s %13d%n", truncate(fr.fileName, 46), fr.fileSize, fr.compressedSize, fr.blockCount, getCompressorSym(fr.alg), ratio, dt.format(fr.modifiedDate), fr.CRC32Value);
+		}
+
+		if(verbose)
+		{
+			for (int i = 0; i < fh.files.size(); i++)
+			{
+				HFFileRec fr = fh.files.get(i);
+				System.out.printf("\n---------- List of blocks for '%s' ----------\n", fr.fileName);
+				System.out.printf("%-4s %10s %14s %7s %7s\n", "#", "Compressed", "Uncompressed", "Line", "Flags");
+
+				for (int j = 0; j < fr.blockCount; j++)
+				{
+					int cBlockSize = Utils.readInt(sin);
+					int uBlockSize = Utils.readInt(sin);
+					assert cBlockSize > 0;
+					assert uBlockSize > 0;
+
+					int bwtLineNum = Utils.readInt(sin);
+					byte bflags = (byte) sin.read();
+					sin.skipNBytes(cBlockSize);
+
+					System.out.printf("%,-4d %10d %14d %7d %7d\n", j, cBlockSize, uBlockSize, bwtLineNum, bflags);
+				}
+			}
+			System.out.println();
 		}
 
 		sin.close();
@@ -55,24 +81,25 @@ public abstract class Archiver
 
 	private static String getCompressorSym(byte code)
 	{
-		switch(code)
+		for (Utils.CompTypes ct: Utils.CompTypes.values())
 		{
-			case 1 -> { return "HUF"; }  // Huffman alg
-			case 2 -> { return "ARI"; }  // range/arithmetic alg
-			case 3 -> { return "RLE"; }  // RLE alg
-			case 4 -> { return "ARA"; }  // Adapting Arithmetic alg
-			case 5 -> { return "A32"; }  // 32bit Arithmetic alg
-			case 6 -> { return "A64"; }  // 64bit Arithmetic alg
-			default -> throw new IllegalStateException("Unexpected value: " + code);
+			if(code == ct.ordinal())
+				return Utils.CompTypeSymbols[ct.ordinal()];
 		}
+		return "<?>"; // unknown compressor type
+
 	}
 
 	protected void printCompressionDone(HFFileRec fr)
 	{
-		logger.info(String.format("Done compression '%s'.", fr.origFilename));
-		logger.info(String.format("%-15s %,d bytes.", "File size", fr.fileSize));
-		logger.info(String.format("%-15s %,d bytes.", "Compressed size", fr.compressedSize));
-		logger.info(String.format("%-15s %.1f%%.", "Ratio", 100*(float)fr.compressedSize/(float)fr.fileSize));
+		logger.info("Done compression.");
+		logger.info(String.format("%-18s '%s'.", "File name", fr.origFilename));
+		logger.info(String.format("%-18s %,d bytes.", "File size", fr.fileSize));
+		logger.info(String.format("%-18s %,d bytes.", "Compressed size", fr.compressedSize));
+		logger.info(String.format("%-18s %s.", "Compression method", Utils.CompTypeSymbols[fr.alg]));
+		logger.info(String.format("%-18s %.2f.", "Ratio", (float)fr.fileSize/(float)fr.compressedSize));
+		logger.info(String.format("%-18s %,d", "Blocks", fr.blockCount));
+		logger.info(String.format("%-18s %,d bytes", "Block size", Utils.BLOCK_SIZE));
 		logger.info("------------------------------");
 	}
 
