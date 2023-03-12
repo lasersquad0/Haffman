@@ -5,12 +5,25 @@ import java.util.logging.Logger;
 public class RangeArchiver extends Archiver
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	static final Utils.CompressorTypes COMPRESSOR_CODE = Utils.CompressorTypes.ARITHMETIC;
+	//private final Utils.CompTypes COMPRESSOR_CODE; // see default constructor
 	private final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
-	private int[] symbols = {1,2,3,7,10,5};
-	private long[] weights = {3,7,99,55,11,23};
-	private long[] cumFreq = null;
-	private final int[] symbol_to_freq_index = new int[256];
+	//private int[] symbols;
+	//private long[] weights;
+	//private long[] cumFreq = null;
+	//private int[] symbol_to_freq_index; // = new int[256];
+
+
+	RangeArchiver()
+	{
+		this(Utils.CompTypes.ARITHMETIC);
+	}
+	RangeArchiver(Utils.CompTypes compCode)
+	{
+		if( (compCode != Utils.CompTypes.ARITHMETIC) && (compCode != Utils.CompTypes.ARITHMETIC32) && (compCode != Utils.CompTypes.ARITHMETIC64) )
+			throw new IllegalArgumentException(String.format("Incorrect compressor type '%s' is specified for '%s' compressor.", compCode.toString(), this.getClass().getName()));
+
+		COMPRESSOR_CODE = compCode;
+	}
 
 	@Override
 	public void compressFiles(String[] filenames) throws IOException
@@ -30,35 +43,7 @@ public class RangeArchiver extends Archiver
 
 		for (int i = 0; i < fh.files.size(); i++)
 		{
-			HFFileRec fr = fh.files.get(i);
-
-			logger.info(String.format("Analysing file '%s'.", fr.origFilename));
-
-			File fl = new File(fr.origFilename); // возможно хранить File в HFFileRec потому как fillFileRecs тоже создаются File
-			int BUFFER = Utils.getOptimalBufferSize(fr.fileSize);
-			InputStream sin = new BufferedInputStream(new FileInputStream(fl),BUFFER);
-
-			InputStream sin1 = new BufferedInputStream(new FileInputStream(fl), BUFFER); // stream только для подсчета частот символов
-			calcWeights(sin1);
-			rescaleWeights(RangeCompressor64.BOTTOM); //*****
-			sin1.close();
-
-			saveFreqs(sout);
-
-			logger.info("Starting compression...");
-
-			var cData = new RangeCompressData(sin, sout, fr.fileSize, cumFreq, weights, symbol_to_freq_index);
-			//var c = new RangeCompressor32(RangeCompressor32.Strategy.RANGEBOTTOM);//*******
-			var c = new RangeCompressor64();
-
-			c.compress(cData);
-
-			fr.compressedSize = cData.sizeCompressed;
-			fr.CRC32Value = cData.CRC32Value;
-
-			sin.close();
-
-			printCompressionDone(fr);
+			compressFile(sout, fh.files.get(i));
 		}
 
 		sout.close();
@@ -66,6 +51,44 @@ public class RangeArchiver extends Archiver
 		fh.updateHeaders(arcFilename); // it is important to save info into files table that becomes available only after compression
 
 		logger.info("All files are processed.");
+	}
+
+	private void compressFile(OutputStream sout, HFFileRec fr) throws IOException
+	{
+		logger.info(String.format("Analysing file '%s'.", fr.origFilename));
+
+		File fl = new File(fr.origFilename); // TODO возможно хранить File в HFFileRec потому как fillFileRecs тоже создаются File
+		InputStream sin = new BufferedInputStream(new FileInputStream(fl), Utils.getOptimalBufferSize(fr.fileSize));
+
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(fr.origFilename);
+		var cData = new CompressData(sin, sout,fr.fileSize, model);
+
+		logger.info("Starting compression...");
+
+		if((COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC32) )
+		{
+			var c = new RangeCompressor32(Utils.MODE.MODE32);
+			model.rescaleTo(c.BOTTOM);
+			model.saveFreqs(sout);
+
+			c.compress(cData);
+		}
+		else
+		{
+			var c = new RangeCompressor32(Utils.MODE.MODE64);
+			model.rescaleTo(c.BOTTOM);
+			model.saveFreqs(sout);
+
+			c.compress(cData);
+		}
+
+		fr.compressedSize = cData.sizeCompressed;
+		fr.CRC32Value = cData.CRC32Value;
+
+		sin.close();
+
+		printCompressionDone(fr);
 	}
 
 	@Override
@@ -96,90 +119,32 @@ public class RangeArchiver extends Archiver
 	{
 		logger.info(String.format("Extracting file '%s'...", fr.fileName));
 
-		loadFreqs(sin); //здесь читаем таблицы symbols и cumFreq из потока
+		var model = new ModelOrder0Fixed();
+		model.loadFreqs(sin); //здесь читаем таблицы symbols и cumFreq из потока
 
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), Utils.getOptimalBufferSize(fr.fileSize));
+		var uData = new CompressData(sin, sout, fr.compressedSize, fr.fileSize, model);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(sin, sout, fr.compressedSize, fr.fileSize, cumFreq, symbols);
-
-		uc.uncompress(uData);
+		if(COMPRESSOR_CODE == Utils.CompTypes.ARITHMETIC32)
+		{
+			var uc = new RangeUncompressor32(Utils.MODE.MODE32);
+			uc.uncompress(uData);
+		}
+		else
+		{
+			var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+			uc.uncompress(uData);
+		}
 
 		if (uData.CRC32Value != fr.CRC32Value)
 			logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
 
 		sout.close();
 
-		logger.info(String.format("Extracting '%s' done.", fr.fileName));
+		logger.info(String.format("Extracting done '%s'.", fr.fileName));
 	}
 
-	private void loadFreqs(InputStream in) throws IOException
-	{
-		var ds = new DataInputStream(in);
 
-		int count = Byte.toUnsignedInt(ds.readByte()) + 1; // stored is an INDEX of last element in symbols to fit it in byte, that is why we are adding 1
-		symbols = new int[count];
-		cumFreq = new long[count + 1];
-
-		for (int i = 0; i < count; i++)
-		{
-			symbols[i] = ds.readByte();
-		}
-
-		int type = ds.readByte(); // reading type of elements the following cumFreq array
-
-		for (int i = 0; i < count + 1; i++)
-		{
-			switch (type)
-			{
-				case 1 -> cumFreq[i] = ds.readLong();
-				case 2 -> cumFreq[i] = (long)ds.readInt();
-				case 3 -> cumFreq[i] = (long)ds.readByte();
-			}
-		}
-	}
-
-	private void saveFreqs(OutputStream out) throws IOException
-	{
-		var ds = new DataOutputStream(out);
-
-		ds.writeByte(symbols.length - 1); // saving INDEX of the last element in symbols because we cannot not have more than 256 symbols there
-		for (int sym : symbols)
-		{
-			ds.writeByte((byte) sym);
-		}
-
-		int type = getFreqsType();
-
-		ds.writeByte(type); // saving a type of elements in the next array (either byte, int or long)
-
-		for (long l : cumFreq)
-		{
-			switch (type)
-			{
-				case 1 -> ds.writeLong(l);
-				case 2 -> ds.writeInt((int) l);
-				case 3 -> ds.writeByte((byte) l);
-			}
-		}
-	}
-
-	private int getFreqsType()
-	{
-		long max = 0;
-		for (long l : cumFreq)
-			if (max < l) max = l;
-
-		if(max <= Byte.MAX_VALUE)
-		{
-			return 3; //saving as byte values
-		}
-		if(max < Integer.MAX_VALUE)
-		{
-			return 2; // saving as int values
-		}
-		return 1; // saving as long values
-	}
 
 	/**
 	 * записываем в архив размер закодированного потока в байтах и lastBits для каждого файла в архиве
@@ -217,29 +182,6 @@ public class RangeArchiver extends Archiver
 		raf.close();
 	}
 */
-	protected void rescaleWeights(long bottom)
-	{
-		if (bottom > cumFreq[cumFreq.length - 1])
-			return; // no scaling needed
-
-		long SummFreq;
-		do
-		{
-			SummFreq = 0;
-			for (int i = 0; i < weights.length; i++)
-			{
-				weights[i] -= (weights[i] >> 1); // this formula guarantees that cumFre[i] will not become zero.
-				SummFreq += weights[i];
-			}
-		}while(SummFreq > bottom);
-
-		// updating cumFreq
-		cumFreq[0] = 0;
-		for (int i = 0; i < weights.length; i++)
-		{
-			cumFreq[i + 1] = cumFreq[i] + weights[i];
-		}
-	}
 
 
 	/**
@@ -248,7 +190,7 @@ public class RangeArchiver extends Archiver
 	 * *** Внимание - портит InputStream sin, передвигает его на конец файла *****
 	 * @throws IOException если что-то произошло с потоком
 	 */
-	protected void calcWeights(InputStream sin) throws IOException
+/*	protected void calcWeights(InputStream sin) throws IOException
 	{
 		logger.entering(Main.class.getName(),"calcWeights");
 
@@ -317,14 +259,7 @@ public class RangeArchiver extends Archiver
 
 		logger.exiting(Main.class.getName(),"calcWeights");
 	}
-
+*/
 }
 
 
-class DataStat
-{
-	int[] symbols;
-	long[] weights;
-	long[] cumFreq;
-	int[] symbol_to_freq_index;
-}
