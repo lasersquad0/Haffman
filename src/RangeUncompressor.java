@@ -1,11 +1,9 @@
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.logging.Logger;
 import java.util.zip.CRC32;
 
 public class RangeUncompressor
 {
-	public enum Strategy { HIGHBYTE, RANGEBOTTOM }
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	private long low;
 	private long range;
@@ -15,24 +13,14 @@ public class RangeUncompressor
 	static final long TOP = 1L << CODEBITS;
 	static final long TOPTOP = 1L << (CODEBITS + 8);
 	static final long BOTTOM = 1L << (CODEBITS - 8);
-	private UncompressData uData;
+	private CompressData uData;
 	private ModelOrder0 model;
 	private final CRC32 crc = new CRC32();
 	private long decodedBytes = 0;
-	private final long SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
-	private final Strategy strategy;
+	//private final long SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
 
-	RangeUncompressor(Strategy strategy)
-	{
-		this.strategy = strategy;
-	}
 
-	RangeUncompressor()
-	{
-		this(Strategy.HIGHBYTE);
-	}
-
-	public void uncompress(UncompressData uuData, ModelOrder0 model) throws IOException
+	public void uncompress(CompressData uuData, ModelOrder0 model) throws IOException
 	{
 		this.uData = uuData;
 		this.model = model;
@@ -49,8 +37,8 @@ public class RangeUncompressor
 		range = TOPTOP - 1; // сразу растягиваем на максимальный range
 		//long totalFreq = uData.cumFreq[uData.cumFreq.length - 1];
 
-		logger.finer(()->String.format("weights=%s", Arrays.toString(model.weights)));
-		logger.finer(()->String.format("low=%X high=%X, range=%X", low, low + range, range));
+		//logger.finest(()->String.format("weights=%s", Arrays.toString(model.weights)));
+		logger.finest(()->String.format("low=%X high=%X, range=%X", low, low + range, range));
 
 		nextChar = 0;
 		for (int i = 0; i < 7; i++) // assumed we have more than 7 compressed bytes in a stream
@@ -78,10 +66,10 @@ public class RangeUncompressor
 			//int j = 0;
 			//while ((uData.cumFreq[j] <= t)) j++;
 
-			long[] res = model.getSym(t); //uData.symbols[j - 1];
+			long[] res = model.FreqToSymbolInfo(t); //uData.symbols[j - 1];
 			int sym = (int)res[0];
 			long left = res[1]; //uData.cumFreq[j - 1];
-			long freq = model.weights[sym]; //uData.cumFreq[j];
+			long freq = res[2]; //model.weights[sym]; //uData.cumFreq[j];
 
 			assert( (left + freq <= model.totalFreq) && (freq > 0) && (model.totalFreq <= BOTTOM) );
 
@@ -89,16 +77,16 @@ public class RangeUncompressor
 			assert (low & (TOPTOP - 1)) == low: "low is out of bounds!";
 			range = freq * range;
 
-			logger.finer(()->String.format("before scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low + range, range));
+			logger.finest(()->String.format("before scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low + range, range));
 			scale();
-			logger.finer(()->String.format("after  scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low + range, range));
+			logger.finest(()->String.format("after  scale sym=%X, low=%X high=%X, range=%X", nextChar, low, low + range, range));
 
 			model.updateStatistics(sym);
 
 			uData.sout.write(sym);
 			crc.update(sym);
 			decodedBytes++;
-			logger.finer(()->String.format("uncompress output byte: 0x%X, count: %,d", sym, decodedBytes));
+			logger.finest(()->String.format("uncompress output byte: 0x%X, count: %,d", sym, decodedBytes));
 		}
 
 		uData.sout.flush();
@@ -115,9 +103,9 @@ public class RangeUncompressor
 		{
 			if((!outByte) && (range < BOTTOM)) // делает low+range=TOPTOP-1 если low+range было >TOPTOP-1
 			{
-				logger.finer(()->String.format("Weird range correction:BEFORE range:%X, BOTTOM: %X", range, BOTTOM));
+				logger.finest(()->String.format("Weird range correction:BEFORE range:%X, BOTTOM: %X", range, BOTTOM));
 				range = BOTTOM - (low & (BOTTOM - 1));
-				logger.finer(()->String.format("Weird range correction:AFTER range:%X, BOTTOM: %X", range, BOTTOM));
+				logger.finest(()->String.format("Weird range correction:AFTER range:%X, BOTTOM: %X", range, BOTTOM));
 				assert range > 0;
 				assert (((low+range) >>> HIGHBYTE) == 0) || (((low+range) >>> HIGHBYTE) == 1):"low+range is out of bounds3!";
 			}
@@ -139,19 +127,19 @@ public class RangeUncompressor
 
 	private void startProgress()
 	{
-		if(uData.sizeUncompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
+		if(uData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) uData.cb.start();
 	}
 
 	private void finishProgress()
 	{
-		if(uData.sizeUncompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
+		if(uData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) uData.cb.finish();
 	}
 
 	long threshold = 0;
 	long delta;
 	private void updateProgress(long total)
 	{
-		if ((uData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
+		if ((uData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) && (total > threshold))
 		{
 			threshold += delta;
 			uData.cb.heartBeat((int) (100 * threshold / uData.sizeUncompressed));
