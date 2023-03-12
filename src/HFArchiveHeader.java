@@ -80,7 +80,7 @@ public class HFArchiveHeader
 	 * Adds filenames into ArrayList of HFFileRec together with file lengths and modified attributes
 	 * @param filenames list of files to compress. Note, that zero index in this array contains archive name, so first filename is filenames[1]
 	 */
-	public void fillFileRecs(String[] filenames, Utils.CompressorTypes alg)
+	public void fillFileRecs(String[] filenames, Utils.CompTypes alg)
 	{
 		files.clear();  // just in case
 
@@ -118,43 +118,29 @@ public class HFArchiveHeader
 		int InitialOffset = fileSignature.length + fileVersion.length + Short.BYTES; // start of files table in an archive
 		int CRC32ValueOffset = Long.BYTES;
 		int CompressedSizeOffset = 3*Long.BYTES;
-		int LastBitsOffset = 4*Long.BYTES;
-		int FileRecSize = 4*Long.BYTES + 2*Byte.BYTES + Short.BYTES;  // Short.BYTES - this is for saving filename length
+		int BlockCountOffset = 4*Long.BYTES + Byte.BYTES;
+		int FileRecSize = 4*Long.BYTES + Integer.BYTES + Byte.BYTES + Short.BYTES;  // Short.BYTES - this is for saving filename length
 
-		//var offsets = getFieldOffsets();
 
-		int pos = InitialOffset; //offsets.get(FHeaderOffs.InitialOffset);
+		int pos = InitialOffset;
 
 		for (HFFileRec fr : files)
 		{
-			raf.seek(pos + CRC32ValueOffset); //offsets.get(FHeaderOffs.CRC32Value));
+			raf.seek(pos + CRC32ValueOffset);
 			raf.writeLong(fr.CRC32Value);
 
-			raf.seek(pos + CompressedSizeOffset); //offsets.get(FHeaderOffs.compressedSize));
+			raf.seek(pos + CompressedSizeOffset);
 			raf.writeLong(fr.compressedSize);
 
-			raf.seek(pos + LastBitsOffset); //offsets.get(FHeaderOffs.lastBits));
-			raf.writeByte(fr.lastBits);
+			raf.seek(pos + BlockCountOffset);
+			raf.writeInt(fr.blockCount);
 
-			pos = pos + FileRecSize /*offsets.get(FHeaderOffs.FileRecSize)*/ + fr.fileName.length() * 2; // length()*2 because writeChars() saves each char as 2 bytes
+			pos = pos + FileRecSize + fr.fileName.length() * 2; // length()*2 because writeChars() saves each char as 2 bytes
 		}
 
 		raf.close();
 	}
 
-	/*
-	private HashMap<FHeaderOffs,Integer> getFieldOffsets()
-	{
-		var res = new HashMap<FHeaderOffs, Integer>();
-		res.put(FHeaderOffs.InitialOffset, fileSignature.length + fileVersion.length + Short.BYTES); // initial fixed offset
-		res.put(FHeaderOffs.CRC32Value, Long.BYTES);
-		res.put(FHeaderOffs.compressedSize, 3*Long.BYTES);
-		res.put(FHeaderOffs.lastBits, 4*Long.BYTES);
-		res.put(FHeaderOffs.FileRecSize, 4*Long.BYTES + 2*Byte.BYTES+ Short.BYTES); // Short.BYTES - this is for saving filename length
-
-		return res;
-	}
-*/
 }
 
 /*
@@ -178,8 +164,8 @@ class HFFileRec
 	long CRC32Value;
 	long modifiedDate;
 	long compressedSize;
-	byte lastBits;
 	byte alg;
+	int blockCount;
 
 	public void save(OutputStream sout) throws IOException
 	{
@@ -189,8 +175,8 @@ class HFFileRec
 		dos.writeLong(CRC32Value);
 		dos.writeLong(modifiedDate);
 		dos.writeLong(compressedSize);
-		dos.writeByte(lastBits);
 		dos.writeByte(alg);
+		dos.writeInt(blockCount);
 		dos.writeShort(fileName.length());
 		dos.writeChars(fileName);  // NOTE! writes 2 bytes for each char
 	}
@@ -203,8 +189,8 @@ class HFFileRec
 		CRC32Value = dos.readLong();
 		modifiedDate = dos.readLong();
 		compressedSize = dos.readLong();
-		lastBits = dos.readByte();
 		alg = dos.readByte();
+		blockCount = dos.readInt();
 
 		int filenameSize = dos.readShort();
 		StringBuilder sb = new StringBuilder(filenameSize);
@@ -217,14 +203,3 @@ class HFFileRec
 		fileName = sb.toString();
 	}
 }
-
-/*
-enum FHeaderOffs
-{
-	InitialOffset,
-	CRC32Value,
-	compressedSize,
-	lastBits,
-	FileRecSize
-}
-*/
