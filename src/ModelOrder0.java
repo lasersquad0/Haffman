@@ -1,74 +1,17 @@
 import java.util.logging.Logger;
 
-public class ModelOrder0
+public abstract class ModelOrder0
 {
-	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	final long rescaleThreshold; // = (1<<16);
-	long[] weights = new long[256]; //[256 + 1];
 	long totalFreq;
-	long[] forGetSym = new long[2];
 
-	ModelOrder0(long rThreshold)
-	{
-		rescaleThreshold = rThreshold;
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 
-		// all initial frequencies are set to 1.
-		totalFreq = 0;
-		for (int i = 0; i < weights.length; i++)
-			totalFreq += (weights[i] = 1);
-	}
+	protected final long[] forSym2Freq = new long[2];
+	public abstract long[] SymbolToFreqRange(int sym);
+	protected final long[] forFreq2Sym = new long[3];
+	public abstract long[] FreqToSymbolInfo(long cumFreq);
+	public abstract void updateStatistics(int sym);
 
-	public long getCumFreq(int sym)
-	{
-		long cumFreq = 0;
-		int i = 0;
-		while(i < sym)
-		{
-			cumFreq += weights[i];
-			i++;
-		}
-		return cumFreq;
-	}
-/*
-	private void encodeSymbol(int sym)
-	{
-		long cumFreq = 0;
-		int i = 0;
-
-		while(i < sym)
-		{ //for (int i = 0; i < sym; i++)
-			cumFreq += weights[i];
-			i++;
-		}
-
-		//rc.Encode(LowCount, Freq[i], SummFreq);
-
-		updateStatistics(sym);
-	}
-*/
-	public void updateStatistics(int sym)
-	{
-		weights[sym]++;
-		totalFreq++;
-		if (totalFreq > rescaleThreshold)
-			rescale();
-	}
-
-	public long[] getSym(long cumFreq)
-	{
-		int sym;
-		long right;
-		for (right = sym = 0; ; sym++)
-		{
-			right += weights[sym];
-			if (right > cumFreq)
-				break;
-		}
-
-		forGetSym[0] = sym;
-		forGetSym[1] = right - weights[sym];
-		return forGetSym;
-	}
 
 	/*
 	int decodeSymbol()
@@ -89,13 +32,23 @@ public class ModelOrder0
 
 		return sym;
 	}
-	 */
-	
 
-	private void rescale()
-	{
-		totalFreq = 0;
-		for (int i = 0; i < weights.length; i++)
-			totalFreq += (weights[i] -= (weights[i] >> 1));
-	}
+
+	private void encodeSymbol(int sym)
+		{
+			long cumFreq = 0;
+			int i = 0;
+
+			while(i < sym)
+			{ //for (int i = 0; i < sym; i++)
+				cumFreq += weights[i];
+				i++;
+			}
+
+			//rc.Encode(LowCount, Freq[i], SummFreq);
+
+			updateStatistics(sym);
+		}
+	*/
+
 }
