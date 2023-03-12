@@ -6,8 +6,8 @@ import java.util.zip.CRC32;
 public class HFTree
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	protected  int[] symbols; // all symbols that are used in input file
-	protected long[] weights;  //  weights of symbols above
+	protected  int[] symbols;  // all symbols that are used in input file
+	protected long[] weights;  // weights of symbols above
 	protected HFNode treeRoot;
 	ArrayList<HFCode> codesList = new ArrayList<>();
 	HashMap<Integer,HFCode> codesMap = new HashMap<>(); // индекс - элемент из symbols, значение - код из дерева
@@ -120,13 +120,13 @@ public class HFTree
 				{
 					if (nodes.get(i).weight >= joint.weight)
 					{
-						nodes.add(i, joint);
+						nodes.add(i, joint); // insert new node into place where it should be according to sorting
 						added = true;
 						break;
 					}
 				}
 				if (!added)
-					nodes.add(nodes.size(), joint);
+					nodes.add(nodes.size(), joint); // inserting into end of array
 
 			} while (nodes.size() != 1);
 		}
