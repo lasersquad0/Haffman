@@ -4,24 +4,21 @@ import java.util.logging.Logger;
 public class HFCompressor
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	HFTree tree;
-	HFCompressData cData;
+	final int i32 = Integer.SIZE; // just for convenience
+	CompressData cData;
 	byte[] writeBuffer = new byte[4];  // буфер для записи int в OutputStream
-	public long encodedBytes = 0;
-	public byte lastBits = 0;
-	final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
+	int accum = 0;
+	int counter = 0; // счетчик сколько битов вставили в int уже
+	long encodedBytes = 0;
 
-	public void compress(HFTree tree, HFCompressData cData) throws IOException
+	public void compress(CompressData cData) throws IOException
 	{
-		encodedBytes = 0;  // сбрасываем счетчики
-		lastBits = 0;
-		this.tree = tree;
 		this.cData = cData;
+		encodedBytes = 0;  // сбрасываем счетчики
 
 		compressInternal();
 
 		cData.sizeCompressed = encodedBytes;
-		cData.lastBits = lastBits;
 	}
 
 	public void compressInternal() throws IOException
@@ -29,57 +26,28 @@ public class HFCompressor
 		logger.entering(this.getClass().getName(),"compressInternal");
 
 		delta = cData.sizeUncompressed/100;
-		long total = 0;
-		int ch;
-		int accum = 0;
-		int counter = 0;
 
 		startProgress();
 
+		long total = 0;
+		int ch;
 		while ((ch = cData.sin.read()) != -1)
 		{
 			updateProgress(total++);
 
-			HFCode hfc = tree.codesMap.get(ch);
-
-			if (counter + hfc.len > Integer.SIZE) // новый byte не влазит в остаток слова, делим на 2 части
-			{
-				accum = accum << (Integer.SIZE - counter); // освобождаем сколько осталось места в слове
-				int len2 = hfc.len + counter - Integer.SIZE; // кол-во не вмещающихся битов
-				int code2 = hfc.code >>> len2; // В текущее слово вставляем только часть битов. Остальная часть пойдет в новое слово
-				accum = accum | code2;
-				writeInt(accum); // заполнили слово полностью
-				accum = 0;
-				int mask = 0xFFFFFFFF >>> (Integer.SIZE - len2);
-				code2 = hfc.code & mask;   // затираем биты которые ранее вставили в предыдущее слово
-				accum = accum | code2;
-				counter = len2;
-			}
-			else
-			{
-				accum = accum << hfc.len;   // освобождаем на длину вставляемого кода
-				accum = accum | hfc.code;
-				counter += hfc.len;
-				if (counter == Integer.SIZE)
-				{
-					writeInt(accum); // заполнили слово ровно полностью
-					accum = 0;
-					counter = 0;
-				}
-			}
+			encodeSymbol(ch);
 		}
 
-		assert counter < Integer.SIZE;
+		assert counter < i32;
 
-		lastBits = Integer.SIZE;
 		if(counter > 0) // поток закончился, а еще остались данные в accum, записываем их
 		{
-			accum = accum << (Integer.SIZE - counter); // до-сдвигаем accum так что бы "пустые" биты остались справа, а не слева
-			writeInt(accum);   // записываем весь
+			accum = accum << (i32 - counter); // до-сдвигаем accum так что бы "пустые" биты остались справа, а значащие слева
+			writeInt(accum);   // записываем весь int даже если значащий бит 1
 			// корректируем счетчик encoded bytes что бы при раскодировании не возникали лишние байты.
-			int corr = counter % 8 == 0 ? counter/8 : counter/8 + 1;
+			int corr = ((counter - 1) >>> 3) + 1; // (counter % 8 == 0) ? (counter >> 3) : (counter >> 3) + 1; // кол-во полных байт занимаемых значимыми битами (округление вверх)
 			encodedBytes = encodedBytes - 4 + corr;
-			lastBits = (byte)counter;
+			//lastBits = (byte)counter;
 		}
 
 		cData.sout.flush();
@@ -87,6 +55,37 @@ public class HFCompressor
 		finishProgress();
 
 		logger.exiting(this.getClass().getName(),"compressInternal");
+	}
+
+	private void encodeSymbol(int sym) throws IOException
+	{
+		HFCode hfc = cData.tree.codesMap.get(sym);
+
+		if (counter + hfc.len > i32) // новый byte не влазит в остаток слова, делим на 2 части
+		{
+			accum = accum << (i32 - counter); // освобождаем сколько осталось места в слове
+			int len2 = hfc.len + counter - i32; // кол-во не вмещающихся битов
+			int code2 = hfc.code >>> len2; // В текущее слово вставляем только часть битов. Остальная часть пойдет в новое слово
+			accum = accum | code2;
+			writeInt(accum); // заполнили слово полностью
+			accum = 0;
+			int mask = 0xFFFFFFFF >>> (i32 - len2); // TODO возможно ранее вставленные биты можно и не затирать здесь, они все равно уедут в никуда при сдвигах
+			code2 = hfc.code & mask;   // затираем биты которые ранее вставили в предыдущее слово
+			accum = accum | code2;
+			counter = len2;
+		}
+		else
+		{
+			accum = accum << hfc.len;   // освобождаем на длину вставляемого кода
+			accum = accum | hfc.code;
+			counter += hfc.len;
+			if (counter == i32)
+			{
+				writeInt(accum); // заполнили слово ровно полностью
+				accum = 0;
+				counter = 0;
+			}
+		}
 	}
 
 	private void writeInt(int v) throws IOException
@@ -101,11 +100,11 @@ public class HFCompressor
 
 	private void startProgress()
 	{
-		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
+		if(cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cData.cb.start();
 	}
 	private void finishProgress()
 	{
-		if (cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.finish();
+		if (cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cData.cb.finish();
 	}
 
 	long threshold = 0;
@@ -113,7 +112,7 @@ public class HFCompressor
 
 	private void updateProgress(long total)
 	{
-		if((cData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
+		if((cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) && (total > threshold))
 		{
 			threshold += delta;
 			cData.cb.heartBeat((int)(100*threshold/cData.sizeUncompressed));
