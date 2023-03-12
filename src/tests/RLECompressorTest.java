@@ -1,34 +1,87 @@
 import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
 
 public class RLECompressorTest {
 
-	@Test
-	public void compress1() throws IOException
+	static class ArrayHolder
+	{
+		byte[] b;
+
+		ArrayHolder(byte[] bb)
+		{
+			b = bb;
+		}
+	}
+
+	static class MyArgumentsProvider implements ArgumentsProvider {
+
+		@Override
+		public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception
+		{
+
+			return Stream.of(
+					Arguments.of("zxcvbMMMbvc", 11, 11, 12, new ArrayHolder(new byte[]{4,'z','x','c','v','b',(byte)129,'M',2,'b','v','c'}) ),
+					Arguments.of("zxcvbMMMbv", 10, 10, 11, new ArrayHolder(new byte[]{4,'z','x','c','v','b',(byte)129,'M',1,'b','v'}) ),
+					Arguments.of("zxcvbMMMb", 9, 9, 10, new ArrayHolder(new byte[]{4,'z','x','c','v','b',(byte)129,'M',0,'b'}) ),
+					Arguments.of("zxcvbMMb", 8, 8, 9, new ArrayHolder(new byte[]{7,'z','x','c','v','b','M','M','b'}) ),
+					Arguments.of("MMMzxcvbMMM123456", 17, 17, 17, new ArrayHolder(new byte[]{(byte)129,'M',4,'z','x','c','v','b',(byte)129,'M',5,'1','2','3','4','5','6'}) ),
+					Arguments.of("MMMMAAAzxcvbMMMb", 16, 16, 14, new ArrayHolder(new byte[]{(byte)130,'M',(byte)129,'A',4,'z','x','c','v','b',(byte)129,'M',0,'b'}) ),
+					Arguments.of("MMMMnAAAvbMMMb", 14, 14, 13, new ArrayHolder(new byte[]{(byte)130,'M',0,'n',(byte)129,'A',1,'v','b',(byte)129,'M',0,'b'}) ),
+					Arguments.of("MMMMAAAzxcvbMMM", 15, 15, 12, new ArrayHolder(new byte[]{(byte)130,'M',(byte)129,'A',4,'z','x','c','v','b',(byte)129,'M'}) ),
+					Arguments.of("MMMMAAAzxcvbMMMAAAA", 19, 19, 14, new ArrayHolder(new byte[]{(byte)130,'M',(byte)129,'A',4,'z','x','c','v','b',(byte)129,'M', (byte)130,'A'}) ),
+					Arguments.of("ababababababababababababababababa", 33, 33, 34, new ArrayHolder(new byte[]{32,'a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a','b','a'}) ),
+					Arguments.of("M".repeat(140), 140, 140, 4, new ArrayHolder(new byte[]{(byte)255,'M',(byte)137,'M'}) ),
+					Arguments.of("M".repeat(126), 126, 126, 2, new ArrayHolder(new byte[]{(byte)252,'M'}) ),
+					Arguments.of("M".repeat(127), 127, 127, 2, new ArrayHolder(new byte[]{(byte)253,'M'}) ),
+					Arguments.of("M".repeat(128), 128, 128, 2, new ArrayHolder(new byte[]{(byte)254,'M'}) ),
+					Arguments.of("M".repeat(129), 129, 129, 2, new ArrayHolder(new byte[]{(byte)255,'M'}) ),
+					Arguments.of("M".repeat(130), 130, 130, 4, new ArrayHolder(new byte[]{(byte)255,'M',(byte)0,'M'}) ),
+					Arguments.of("M".repeat(131), 131, 131, 5, new ArrayHolder(new byte[]{(byte)255,'M',(byte)1,'M','M'}) ),
+					Arguments.of("M".repeat(132), 132, 132, 4, new ArrayHolder(new byte[]{(byte)255,'M',(byte)129,'M'}) ),
+					Arguments.of("MMM", 3, 3, 2, new ArrayHolder(new byte[]{(byte)129,'M'}) ),
+					Arguments.of("MM",  2, 2, 3, new ArrayHolder(new byte[]{1,'M','M'}) ),
+					Arguments.of("b",   1, 1, 2, new ArrayHolder(new byte[]{0,'b'}) ),
+					Arguments.of("я",   1, 2, 3, new ArrayHolder(new byte[]{1,(byte)209,(byte)143}) ),
+					Arguments.of("яя",  2, 4, 5, new ArrayHolder(new byte[]{3,(byte)209,(byte)143,(byte)209,(byte)143}) ),
+					Arguments.of("яяя", 3, 6, 7, new ArrayHolder(new byte[]{5,(byte)209,(byte)143,(byte)209,(byte)143,(byte)209,(byte)143}) )
+			);
+		}
+	}
+	@ParameterizedTest(name = "dataset - {index}")
+	@ArgumentsSource(MyArgumentsProvider.class)
+	public void compress1(String s, int strlen, int blen, int clen, ArrayHolder carr) throws IOException
 	{
 		// unequal - equal - unequal
 		// all seqs 3 and more symbols long
 
-		String s = "zxcvbMMMbvc";
+		//String s = "zxcvbMMMbvc";
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
-		assertEquals(11, s.length());
-		assertEquals(12, data.sizeCompressed);
-		assertEquals(12, sout.size());
+		assertEquals(strlen, s.length());
+		assertEquals(blen, s.getBytes().length);
+		assertEquals(clen, data.sizeCompressed);
+		assertEquals(clen, sout.size());
 
-		byte[] b = {4,'z','x','c','v','b',(byte)129,'M',2,'b','v','c'};
-		assertArrayEquals(b, sout.toByteArray());
+		//byte[] b = {4,'z','x','c','v','b',(byte)129,'M',2,'b','v','c'};
+		assertArrayEquals(carr.b, sout.toByteArray());
 	}
 
+	/*
 	@Test
 	public void compress2() throws IOException
 	{
@@ -39,7 +92,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(10, s.length());
@@ -60,7 +113,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(9, s.length());
@@ -81,7 +134,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(8, s.length());
@@ -101,7 +154,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(17, s.length());
@@ -121,7 +174,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(16, s.length());
@@ -142,7 +195,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(14, s.length());
@@ -161,7 +214,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(15, s.length());
@@ -180,7 +233,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(19, s.length());
@@ -199,7 +252,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(33, s.length());
@@ -219,7 +272,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(140, s.length());
@@ -229,7 +282,7 @@ public class RLECompressorTest {
 		byte[] b = {(byte)255,'M',(byte)137,'M'};
 		assertArrayEquals(b, sout.toByteArray());
 	}
-
+*/
 	@Test
 	public void compress11() throws IOException
 	{
@@ -239,7 +292,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(146, s.length());
@@ -264,7 +317,7 @@ public class RLECompressorTest {
 		assertArrayEquals(b, sout.toByteArray());
 
 	}
-
+/*
 	@Test
 	public void compress12() throws IOException
 	{
@@ -274,7 +327,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(3, s.length());
@@ -294,7 +347,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(2, s.length());
@@ -314,7 +367,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(1, s.length());
@@ -334,7 +387,7 @@ public class RLECompressorTest {
 		var sout = new ByteArrayOutputStream(s.length());
 
 		var c = new RLECompressor();
-		var data = new HFCompressData(sin, sout, s.getBytes().length);
+		var data = new CompressData(sin, sout, s.getBytes().length);
 		c.compress(data);
 
 		assertEquals(1, s.length());
@@ -345,4 +398,6 @@ public class RLECompressorTest {
 		byte[] b = {1,(byte)209,(byte)143};
 		assertArrayEquals(b, sout.toByteArray());
 	}
+	*/
+
 }

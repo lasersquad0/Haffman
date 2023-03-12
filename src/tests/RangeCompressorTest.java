@@ -1,5 +1,4 @@
 import org.junit.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -8,18 +7,20 @@ import static org.junit.Assert.*;
 
 public class RangeCompressorTest {
 
+	private static int numTest = 0;
 	@Test
 	public void compress1() throws IOException
 	{
+		numTest++;
+
 		String s = "zxcvbMMMbvc";
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(11, s.length());
@@ -35,8 +36,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -47,15 +49,16 @@ public class RangeCompressorTest {
 	@Test
 	public void compress2() throws IOException
 	{
+		numTest++;
+
 		String s = "zxcvbMMMb";
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(9, s.length());
@@ -71,8 +74,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -83,16 +87,16 @@ public class RangeCompressorTest {
 	@Test
 	public void compress3() throws IOException
 	{
+		numTest++;
+
 		String s = "MMMMMMMMMMMMMMMMMMMM";
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
-		c.compress(data, model);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
+		c.compress(data,model);
 
 		assertEquals(20, s.length());
 		assertEquals(20, s.getBytes().length);
@@ -106,8 +110,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -122,11 +127,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
+
 		c.compress(data, model);
 
 		assertEquals(20, s.length());
@@ -142,8 +146,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -158,11 +163,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(19, s.length());
@@ -178,8 +182,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -194,11 +199,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(33, s.length());
@@ -214,8 +218,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -230,11 +235,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(146, s.length());
@@ -250,8 +254,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -266,11 +271,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(143, s.length());
@@ -285,8 +289,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -301,11 +306,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(111, s.length());
@@ -321,8 +325,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -337,11 +342,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(50, s.length());
@@ -357,8 +361,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -374,11 +379,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(1001, s.length());
@@ -393,8 +397,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -410,11 +415,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
+
 		c.compress(data, model);
 
 		assertEquals(1001, s.length());
@@ -429,8 +433,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -445,11 +450,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(48, s.length());
@@ -465,8 +469,9 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.length(), out2.size());
@@ -481,11 +486,10 @@ public class RangeCompressorTest {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.getBytes().length);
 
-		//DataStat ds = calcWeights(s);
-
 		var c = new RangeCompressor();
-		var data = new CompressData(sin, sout, s.getBytes().length);
-		var model = new ModelOrder0(RangeCompressor.BOTTOM);
+		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var data = new CompressData(sin, sout, s.getBytes().length,model);
+
 		c.compress(data, model);
 
 		assertEquals(39, s.length());
@@ -501,12 +505,14 @@ public class RangeCompressorTest {
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
 		RangeUncompressor uc = new RangeUncompressor();
-		var uData = new UncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed);
-		model = new ModelOrder0(RangeCompressor.BOTTOM);
+		model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed,model);
+
 		uc.uncompress(uData, model);
 
 		assertEquals(s.getBytes().length, out2.size());
 		assertEquals(s.getBytes().length, uData.sizeUncompressed);
 		assertEquals(s, out2.toString());
 	}
+
 }

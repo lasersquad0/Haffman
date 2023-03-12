@@ -1,5 +1,4 @@
 import org.junit.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,50 +8,6 @@ import static org.junit.Assert.assertEquals;
 
 public class RangeCompressor64Test {
 
-	private DataStat calcWeights(String s)
-	{
-		DataStat ds = new DataStat();
-
-		long[] freq = new long[256];
-		byte[] b = s.getBytes();
-		for (byte value : b)
-		{
-			freq[Byte.toUnsignedInt(value)]++; // обходим знаковость байта
-		}
-
-		int nonzero = 0;
-		for (long l : freq)
-			if(l > 0) nonzero++;
-
-		ds.symbols = new int[nonzero];
-		ds.weights = new long[nonzero];
-
-		int j = 0;
-		for (int i = 0; i < freq.length; i++)
-		{
-			if(freq[i] > 0)
-			{
-				ds.symbols[j] = i;
-				ds.weights[j] = freq[i];
-				j++;
-			}
-		}
-
-		// preparing data for compressor/uncompressor
-		ds.cumFreq = new long[ds.weights.length + 1];
-		ds.cumFreq[0] = 0;
-		for (int i = 0; i < ds.weights.length; i++)
-		{
-			ds.cumFreq[i+1] = ds.cumFreq[i] + ds.weights[i];
-		}
-		ds.symbol_to_freq_index = new int[256];
-		for (int i = 0; i < ds.symbols.length; i++)
-		{
-			ds.symbol_to_freq_index[ds.symbols[i]] = i + 1;
-		}
-
-		return ds;
-	}
 
 	@Test
 	public void compress1() throws IOException
@@ -61,10 +16,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(11, s.length());
@@ -79,8 +36,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -95,10 +52,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(9, s.length());
@@ -113,8 +72,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -129,10 +88,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(20, s.length());
@@ -146,8 +107,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -162,10 +123,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(20, s.length());
@@ -180,8 +143,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -196,10 +159,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(19, s.length());
@@ -214,8 +179,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -230,10 +195,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(33, s.length());
@@ -248,8 +215,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -264,10 +231,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(146, s.length());
@@ -282,8 +251,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -298,10 +267,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(143, s.length());
@@ -315,8 +286,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -331,10 +302,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(111, s.length());
@@ -349,8 +322,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -365,10 +338,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(50, s.length());
@@ -383,8 +358,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -400,10 +375,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(1001, s.length());
@@ -417,8 +394,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -434,10 +411,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(1001, s.length());
@@ -451,8 +430,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -467,10 +446,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.length());
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(48, s.length());
@@ -485,8 +466,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.length(), out2.size());
@@ -501,10 +482,12 @@ public class RangeCompressor64Test {
 		var sin = new ByteArrayInputStream(s.getBytes());
 		var sout = new ByteArrayOutputStream(s.getBytes().length);
 
-		DataStat ds = calcWeights(s);
+		//DataStat ds = Utils.calcWeights(s);
 
-		var c = new RangeCompressor64();
-		var data = new RangeCompressData(sin, sout, s.getBytes().length, ds.cumFreq, ds.weights, ds.symbol_to_freq_index);
+		var c = new RangeCompressor32(Utils.MODE.MODE64);
+		var model = new ModelOrder0Fixed();
+		model.calcWeights(new ByteArrayInputStream(s.getBytes()));
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 		c.compress(data);
 
 		assertEquals(39, s.length());
@@ -519,8 +502,8 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor64();
-		var uData = new RangeUncompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, ds.cumFreq, ds.symbols);
+		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
 		assertEquals(s.getBytes().length, out2.size());
