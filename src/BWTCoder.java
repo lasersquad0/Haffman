@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
@@ -23,6 +24,7 @@ public class BWTCoder
 			index[i] = i;
 		}
 
+		//QuickSort.SORT_FROM_RIGHT_TO_LEFT = true;
 		QuickSort.bwtsort(data.srcblock, index, data.bytesInBlock,0, data.bytesInBlock - 1, 0, 1);
 
 		//checkSorting(data); // !! ЗАКОМЕНТАРИТЬ ПОТОМ
@@ -130,6 +132,134 @@ public class BWTCoder
 		if(!Utils.compareBlocks(Arrays.copyOf(data.srcblock, data.bytesInBlock), sblock))
 		{
 			logger.finer("[checkSorting] Blocks srcblock and sblock are not equal!");
+		}
+	}
+
+}
+
+class BWTTask implements Runnable
+{
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+	private static int seqB = 0;
+	private static int seqR = 0;
+	private final String name;
+	BlockCoderData data;
+	TransformSeq transformer;
+
+	private synchronized int incSeqB()
+	{
+		return seqB++;
+	}
+
+	private synchronized int incSeqR()
+	{
+		return seqR++;
+	}
+
+	BWTTask()
+	{
+		data = new BlockCoderData();
+		data.allocate(Utils.BLOCK_SIZE);
+		transformer = new TransformSeq();
+		name = "BWTTask" + incSeqB();
+	}
+
+	@Override
+	public void run()
+	{
+		int num = incSeqR();
+		logger.finer(name + "(#" + num + ")" + " task has started");
+
+		transformer.doTransformEncode(data);
+
+		logger.finer(name + "(#" + num + ")" + " task has finished");
+	}
+}
+
+class TransformSeq
+{
+	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+	private final byte FLAG_RLE1 = 0x08;
+	private final byte FLAG_BWT  = 0x04;
+	private final byte FLAG_MTF  = 0x02;
+	private final byte FLAG_RLE2 = 0x01;
+	private final BWTCoder bwt;
+	private final MTFCoder mtf;
+	private final RLECoder rle;
+
+	TransformSeq()
+	{
+		bwt = new BWTCoder();
+		mtf = new MTFCoder();
+		rle = new RLECoder();
+	}
+
+	public void doTransformEncode(BlockCoderData data)
+	{
+
+		try
+		{
+			data.bflags = 0;
+
+			if(rle.encodeBlock(data)) // if encoded data is going to increase after RLE then cancel it (stop RLE encoding and forget results)
+			{
+				data.bflags |= FLAG_RLE1;
+				data.swapBuffers();
+			}
+			else
+			{
+				logger.finer("RLE1 transform is CANCELLED because it increased block size.");
+			}
+
+			bwt.encodeBlock(data);
+			data.swapBuffers();
+			data.bflags |= FLAG_BWT;
+
+			mtf.encodeBlock(data);
+			data.swapBuffers();
+			data.bflags |= FLAG_MTF;
+
+			if(rle.encodeBlock(data)) // the same. if data going to increase after RLE - do not use RLE for this particular block
+			{
+				data.bflags |= FLAG_RLE2;
+				data.swapBuffers();
+			}
+			else
+			{
+				logger.finer("RLE2 transform is CANCELLED because it increased block size.");
+			}
+
+		}
+		catch (IOException e)
+		{
+			throw new RuntimeException(e);
+		}
+	}
+
+	public void doTransformDecode(BlockCoderData data)
+	{
+		if ((data.bflags & FLAG_RLE2) == FLAG_RLE2)
+		{
+			rle.decodeBlock(data);
+			data.swapBuffers();
+		}
+
+		if ((data.bflags & FLAG_MTF) == FLAG_MTF)
+		{
+			mtf.decodeBlock(data);
+			data.swapBuffers();
+		}
+
+		if ((data.bflags & FLAG_BWT) == FLAG_BWT)
+		{
+			bwt.decodeBlock(data);
+			data.swapBuffers();
+		}
+
+		if ((data.bflags & FLAG_RLE1) == FLAG_RLE1)
+		{
+			rle.decodeBlock(data);
+			data.swapBuffers();
 		}
 	}
 
