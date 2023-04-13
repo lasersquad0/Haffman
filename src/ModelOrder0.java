@@ -2,10 +2,9 @@ import java.util.logging.Logger;
 
 public abstract class ModelOrder0
 {
-	long totalFreq;
-
-	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-
+	protected long totalFreq;
+	protected long[] weights;
+	//private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	protected final long[] forSym2Freq = new long[2];
 	public abstract long[] SymbolToFreqRange(int sym);
 	protected final long[] forFreq2Sym = new long[3];

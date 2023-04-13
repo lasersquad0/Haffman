@@ -1,9 +1,9 @@
 import java.util.logging.Logger;
 
 public class ModelOrder0Adapt extends ModelOrder0
-{	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+{
+	//private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	private final long rescaleThreshold;
-	final long[] weights;
 
 	ModelOrder0Adapt(long threshold)
 	{
@@ -36,8 +36,8 @@ public class ModelOrder0Adapt extends ModelOrder0
 	public long[] FreqToSymbolInfo(long cumFreq)
 	{
 		int sym;
-		long right;
-		for (right = sym = 0; ; sym++) // TODO may be replace this 'for' by some index table?
+		long right = 0;
+		for (sym = 0; ; sym++) // TODO may be replace this 'for' by some index table?
 		{
 			right += weights[sym];
 			if (right > cumFreq)
