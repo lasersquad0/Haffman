@@ -10,7 +10,7 @@ public class HFArchiveHeader
 2. Версия формата файла — 2 байта - '00', '01'
 3. Кол-во файлов в архиве. Для последующего корректного чтения Списка файлов.
 4. Таблица с именами файлов, размерами и остальными полями.
-5. Размер таблицы кодов для первого файла — 2 байта
+5. Размер таблицы кодов для первого файла — 2 байта (если требуется)
 6. Таблица кодов — 6 * (количество знаков) байт [тройки: символ(byte) — код(int) - длина(byte)]
 7. Сжатые данные — кол-во сжатых байт сохраняется в таблице файлов
 пункты 6 и 7 повторяются для всех файлов.
@@ -22,9 +22,6 @@ public class HFArchiveHeader
 
 
 
-	/** Now itwworks through asserts
-	 * Replace asserts by throwing exceptions.
-	 */
 	 public void checkHeaderData()
 	{
 		assert fileSignature[0] == 'R';
@@ -40,19 +37,19 @@ public class HFArchiveHeader
 
 	public void loadHeader(InputStream sin) throws IOException
 	{
-		var dos = new DataInputStream(sin);
+		var dis = new DataInputStream(sin);
 
-		int res = dos.read(fileSignature);
-		res |= dos.read(fileVersion);
+		int res = dis.read(fileSignature);
+		res |= dis.read(fileVersion);
 		if(res < 0)
 			throw new IOException("Wrong file format.");
 
 		files.clear();
-		short filesCount = dos.readShort();
+		short filesCount = dis.readShort();
 		for (short i = 0; i < filesCount; i++)
 		{
 			HFFileRec fr = new HFFileRec();
-			fr.load(dos);
+			fr.load(dis);
 
 			files.add(fr);
 		}
@@ -96,6 +93,8 @@ public class HFArchiveHeader
 				fr.fileSize = fl.length();
 				fr.modifiedDate = fl.lastModified(); //another way to do the same is Files.getLastModifiedTime()
 				fr.alg = (byte)alg.ordinal();
+				fr.blockCount = 0;
+				fr.blockSize = Utils.BLOCK_SIZE;
 
 				files.add(fr);
 			}
@@ -107,7 +106,7 @@ public class HFArchiveHeader
 	}
 
 	/**
-	 * записываем в архив размер закодированного потока в байтах и lastBits для каждого файла в архиве
+	 * Записываем в уже сформированный архив размер закодированных (сжатых) потоков в байтах для каждого файла в архиве
 	 * @param arcFilename Name of the archive
 	 * @throws IOException if something goes wrong
 	 */
@@ -119,7 +118,7 @@ public class HFArchiveHeader
 		int CRC32ValueOffset = Long.BYTES;
 		int CompressedSizeOffset = 3*Long.BYTES;
 		int BlockCountOffset = 4*Long.BYTES + Byte.BYTES;
-		int FileRecSize = 4*Long.BYTES + Integer.BYTES + Byte.BYTES + Short.BYTES;  // Short.BYTES - this is for saving filename length
+		int FileRecSize = 4*Long.BYTES + 2*Integer.BYTES + Byte.BYTES + Short.BYTES;  // Short.BYTES - this is for saving filename length
 
 
 		int pos = InitialOffset;
@@ -144,14 +143,15 @@ public class HFArchiveHeader
 }
 
 /*
-Структура записи о файле
+Структура записи о файле в архиве
 1. Размер ориг файла — 8 байт (long)
 2. CRC32 ориг файла для проверки правильности разархивации и общей целостности — 8 байт
 3. Modified date ориг файла
 4. Размер сжатого файла — 8 байт (long) - задает размер данных для разархивации
-5 Кол-во значимых bits в последнем int закодированного потока
-6. Размер строки имени файла
-7. Строка имени файла который находится в архиве. На каждый символ используется 2 байта при записи.
+5. Код алгоритма которым был сжат файл
+6. Количество блоков сжатого файла (для неблочных алгоритмов записывается ноль)
+7. Размер строки имени файла
+8. Строка имени файла который находится в архиве. На каждый символ используется 2 байта при записи.
 */
 
 class HFFileRec
@@ -166,6 +166,7 @@ class HFFileRec
 	long compressedSize;
 	byte alg;
 	int blockCount;
+	int blockSize;
 
 	public void save(OutputStream sout) throws IOException
 	{
@@ -177,6 +178,7 @@ class HFFileRec
 		dos.writeLong(compressedSize);
 		dos.writeByte(alg);
 		dos.writeInt(blockCount);
+		dos.writeInt(blockSize);
 		dos.writeShort(fileName.length());
 		dos.writeChars(fileName);  // NOTE! writes 2 bytes for each char
 	}
@@ -191,6 +193,7 @@ class HFFileRec
 		compressedSize = dos.readLong();
 		alg = dos.readByte();
 		blockCount = dos.readInt();
+		blockSize = dos.readInt();
 
 		int filenameSize = dos.readShort();
 		StringBuilder sb = new StringBuilder(filenameSize);
