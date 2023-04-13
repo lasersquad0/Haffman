@@ -3,9 +3,8 @@ import java.util.logging.Logger;
 
 public class ModelOrder0Fixed extends ModelOrder0
 {
-	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
+	//private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
 	private int[] symbols;
-	private long[] weights;
 	private long[] cumFreq;
 	private int[] symbol_to_freq_index;
 
@@ -91,6 +90,9 @@ public class ModelOrder0Fixed extends ModelOrder0
 		totalFreq = cumFreq[cumFreq.length - 1];
 	}
 
+	/** Does nothing in Fixed model
+	 * @param sym
+	 */
 	@Override
 	public void updateStatistics(int sym)
 	{
@@ -100,6 +102,10 @@ public class ModelOrder0Fixed extends ModelOrder0
 			rescale();*/
 	}
 
+	/**
+	 *  Divides weights into halves and recalculates totalFreq.
+	 *  WARNING: only totalFreq variable is updated! cumFreq array left unchanged.
+	 */
 	private void rescale()
 	{
 		totalFreq = 0;
@@ -130,8 +136,6 @@ public class ModelOrder0Fixed extends ModelOrder0
 		{
 			cumFreq[i + 1] = cumFreq[i] + weights[i];
 		}
-
-		//totalFreq = cumFreq[cumFreq.length - 1];
 	}
 
 	public void loadFreqs(InputStream in) throws IOException
@@ -141,6 +145,7 @@ public class ModelOrder0Fixed extends ModelOrder0
 		int count = Byte.toUnsignedInt(ds.readByte()) + 1; // stored is an INDEX of last element in symbols to fit it in byte, that is why we are adding 1
 		symbols = new int[count];
 		cumFreq = new long[count + 1];
+		weights = new long[count];
 
 		for (int i = 0; i < count; i++)
 		{
@@ -158,6 +163,15 @@ public class ModelOrder0Fixed extends ModelOrder0
 				case 3 -> cumFreq[i] = (long)ds.readByte();
 			}
 		}
+
+
+		totalFreq = cumFreq[cumFreq.length - 1];
+
+		//restoring weights from cumFreq
+		for (int i = 0; i < weights.length; i++)
+		{
+			weights[i] = cumFreq[i + 1] - cumFreq[i];
+		}
 	}
 
 	public void saveFreqs(OutputStream out) throws IOException
@@ -167,7 +181,7 @@ public class ModelOrder0Fixed extends ModelOrder0
 		ds.writeByte(symbols.length - 1); // saving INDEX of the last element in symbols because we cannot not have more than 256 symbols there
 		for (int sym : symbols)
 		{
-			ds.writeByte((byte) sym);
+			ds.writeByte(sym);
 		}
 
 		int type = getFreqsType();
