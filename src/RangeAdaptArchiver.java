@@ -1,4 +1,5 @@
 import java.io.*;
+import java.nio.file.Path;
 import java.util.logging.Logger;
 
 public class RangeAdaptArchiver extends Archiver
@@ -12,14 +13,22 @@ public class RangeAdaptArchiver extends Archiver
 	}
 	RangeAdaptArchiver(Utils.CompTypes compCode)
 	{
-		if( (compCode != Utils.CompTypes.AARITHMETIC) && (compCode != Utils.CompTypes.AARITHMETIC32) && (compCode != Utils.CompTypes.AARITHMETIC64) )
+		if( (compCode != Utils.CompTypes.ABITARITHMETIC) && (compCode != Utils.CompTypes.AARITHMETIC) && (compCode != Utils.CompTypes.AARITHMETIC32) && (compCode != Utils.CompTypes.AARITHMETIC64) )
 			throw new IllegalArgumentException(String.format("Incorrect compressor type '%s' is specified for '%s' compressor.", compCode.toString(), this.getClass().getName()));
 
 		COMPRESSOR_CODE = compCode;
 	}
 
+	private Utils.MODE mode()
+	{
+		if ((COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC32))
+			return Utils.MODE.MODE32;
+		else
+			return Utils.MODE.MODE64;
+	}
+
 	@Override
-	public void compressFiles(String[] filenames) throws IOException
+	public String compressFiles(String[] filenames) throws IOException
 	{
 		if(filenames.length < 2)
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
@@ -44,46 +53,46 @@ public class RangeAdaptArchiver extends Archiver
 		fh.updateHeaders(arcFilename); // it is important to save info into files table that becomes available only after compression
 
 		logger.info("All files are processed.");
+
+		return arcFilename;
 	}
 
 	public void compressFile(HFFileRec fr, OutputStream sout) throws IOException
 	{
 		logger.info(String.format("Starting compression '%s' ...", fr.origFilename));
 
-
-		//InputStream sin = Utils.buildInputStream(fr, Utils.LOCK_SIZE,true, true);
-		//InputStream sin0 = new BufferedInputStream(new FileInputStream(fr.origFilename), Utils.getOptimalBufferSize(fr.fileSize));
-
-		/*CompressData cData;
-
-		if((COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC32))
+		if(Utils.BLOCK_MODE)
 		{
-			var c = new RangeAdaptCompressor(Utils.MODE.MODE32);
-			cData = new CompressData(sin, sout, fr.fileSize);
-			c.compress(cData);
+			BlockCompressable cp;
+			if(COMPRESSOR_CODE == Utils.CompTypes.ABITARITHMETIC)
+				cp = new RangeBitsCompressor();
+			else
+				cp = new RangeAdaptCompressor(mode());
+
+			var bm = new BlockManager();
+			if (Utils.THREADS_COUNT > 1)
+				bm.compressFileInThread(fr, sout, cp);
+			else
+				bm.compressFile(fr, sout, cp);
 		}
 		else
 		{
-			var c = new RangeAdaptCompressor(Utils.MODE.MODE64);
-			cData = new CompressData(sin, sout, fr.fileSize);
-			c.compress(cData);
+			InputStream sin = new BufferedInputStream(new FileInputStream(fr.origFilename), Utils.getOptimalBufferSize(fr.fileSize));
+
+			Compressor cp;
+			if(COMPRESSOR_CODE == Utils.CompTypes.ABITARITHMETIC)
+				cp = new RangeBitsCompressor();
+			else
+				cp = new RangeAdaptCompressor(mode());
+
+			var cData = new CompressData(sin, sout, fr.fileSize);
+			cp.compress(cData);
+
+			sin.close();
+
+			fr.compressedSize = cData.sizeCompressed;
+			fr.CRC32Value = cData.CRC32Value;
 		}
-		sin.close();
-
-		 */
-
-
-		RangeAdaptCompressor cp;
-		if((COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC32))
-			cp = new RangeAdaptCompressor(Utils.MODE.MODE32);
-		else
-			cp = new RangeAdaptCompressor(Utils.MODE.MODE64);
-
-		var bm = new BlockManager();
-		bm.compressFile(fr, sout, cp);
-
-//		fr.compressedSize = cData.sizeCompressed;
-//		fr.CRC32Value = cData.CRC32Value;
 
 		printCompressionDone(fr);
 		//logger.info(String.format("Compression '%s' done.", fr.origFilename));
@@ -117,32 +126,36 @@ public class RangeAdaptArchiver extends Archiver
 	{
 		logger.info(String.format("Extracting file '%s'...", fr.fileName));
 
-		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), Utils.getOptimalBufferSize(fr.fileSize));
-		//OutputStream sout = Utils.buildOutputStream(fr, BLOCK_SIZE, true, true);
+		Path p = Path.of(Utils.OUTPUT_DIRECTORY, fr.fileName);
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(p.toFile()), Utils.getOptimalBufferSize(fr.fileSize));
 
-//		CompressData uData;
-		RangeAdaptUncompressor uc;
-		if((COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC32) )
+		if(Utils.BLOCK_MODE)
 		{
-			uc = new RangeAdaptUncompressor(Utils.MODE.MODE32);
-//			uData = new CompressData(sin, sout, fr.compressedSize, fr.fileSize);
-//			uc.uncompress(uData);
+			var uc = new RangeAdaptCompressor(mode());
+			var bm = new BlockManager();
+			var udata = new CompressData(sin, sout, fr.compressedSize, fr.fileSize);
+			bm.uncompressFile(fr, udata, uc);
+
+			if (udata.CRC32Value != fr.CRC32Value)
+				logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, udata.CRC32Value, fr.CRC32Value));
 		}
 		else
 		{
-			uc = new RangeAdaptUncompressor(Utils.MODE.MODE64);
-//			uData = new CompressData(sin, sout, fr.compressedSize, fr.fileSize);
-//			uc.uncompress(uData);
+			Compressor uc;
+			if(COMPRESSOR_CODE == Utils.CompTypes.ABITARITHMETIC)
+				uc = new RangeBitsCompressor();
+			else
+				uc = new RangeAdaptCompressor(mode());
+
+			var uData = new CompressData(sin, sout, fr.compressedSize, fr.fileSize);
+			uc.uncompress(uData);
+
+			if (uData.CRC32Value != fr.CRC32Value)
+				logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
 		}
 
-		var bm = new BlockManager();
-		bm.uncompressFile(fr, sin, sout, uc);
-
-/*		if (uData.CRC32Value != fr.CRC32Value)
-			logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
-
 		sout.close();
-*/
+
 		logger.info(String.format("Extracting done '%s'.", fr.fileName));
 	}
 
