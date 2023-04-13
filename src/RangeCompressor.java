@@ -15,15 +15,13 @@ public class RangeCompressor
 	static final long TOPTOP = 1L << (CODEBITS + 8);
 	static final long BOTTOM = 1L << (CODEBITS - 8);
 	private CompressData cData;
-	//private ModelOrder0 model;
 	private final CRC32 crc = new CRC32();
 	public long encodedBytes = 0;
 
 
-	public void compress(CompressData ccData, ModelOrder0 model) throws IOException
+	public void compress(CompressData ccData) throws IOException
 	{
 		this.cData = ccData;
-		//this.model = model;
 
 		assert cData.sizeUncompressed > 0;
 
@@ -48,15 +46,15 @@ public class RangeCompressor
 			updateProgress(total++);
 
 			//int index = cData.symbol_to_freq_index[nextCh];
-			long[] res = model.SymbolToFreqRange(nextCh);//cData.cumFreq[index - 1];
+			long[] res = ccData.model.SymbolToFreqRange(nextCh);//cData.cumFreq[index - 1];
 			long left = res[0];
 			long freq = res[1]; //model.weights[nextCh];
 
-			assert(left + freq <= model.totalFreq);
+			assert(left + freq <= ccData.model.totalFreq);
 			assert(freq > 0);
-			assert(model.totalFreq <= BOTTOM);
+			assert(ccData.model.totalFreq <= BOTTOM);
 
-			range = range / model.totalFreq;
+			range = range / ccData.model.totalFreq;
 			low = low + left * range;
 			range = freq * range;
 
@@ -64,7 +62,7 @@ public class RangeCompressor
 			scale();
 			logger.finest(()->String.format("AFTER  scale sym=%X, low=%X high=%X, range=%X", nextCh, low, low + range, range));
 
-			model.updateStatistics(nextCh);
+			ccData.model.updateStatistics(nextCh);
 		}
 
 		writeLastBytes();
@@ -116,21 +114,22 @@ public class RangeCompressor
 		}
 	}
 
+	private final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
 	private void startProgress()
 	{
-		if(cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cData.cb.start();
+		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.start();
 	}
 
 	private void finishProgress()
 	{
-		if(cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cData.cb.finish();
+		if(cData.sizeUncompressed > SHOW_PROGRESS_AFTER) cData.cb.finish();
 	}
 
 	long threshold = 0;
 	long delta;
 	private void updateProgress(long total)
 	{
-		if ((cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) && (total > threshold))
+		if ((cData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
 		{
 			threshold += delta;
 			cData.cb.heartBeat((int) (100 * threshold / cData.sizeUncompressed));
