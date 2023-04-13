@@ -1,16 +1,12 @@
 import java.io.*;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
 public class RangeArchiver extends Archiver
 {
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	//private final Utils.CompTypes COMPRESSOR_CODE; // see default constructor
 	private final int OUTPUT_BUF_SIZE = 100_000_000; // buffer for output archive file
-	//private int[] symbols;
-	//private long[] weights;
-	//private long[] cumFreq = null;
-	//private int[] symbol_to_freq_index; // = new int[256];
 
 
 	RangeArchiver()
@@ -25,8 +21,17 @@ public class RangeArchiver extends Archiver
 		COMPRESSOR_CODE = compCode;
 	}
 
+	private Utils.MODE mode()
+	{
+		if ((COMPRESSOR_CODE == Utils.CompTypes.ARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.ARITHMETIC32))
+			return Utils.MODE.MODE32;
+		else
+			return Utils.MODE.MODE64;
+	}
+
+
 	@Override
-	public void compressFiles(String[] filenames) throws IOException
+	public String compressFiles(String[] filenames) throws IOException
 	{
 		if(filenames.length < 2)
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
@@ -51,6 +56,8 @@ public class RangeArchiver extends Archiver
 		fh.updateHeaders(arcFilename); // it is important to save info into files table that becomes available only after compression
 
 		logger.info("All files are processed.");
+
+		return arcFilename;
 	}
 
 	private void compressFile(OutputStream sout, HFFileRec fr) throws IOException
@@ -62,26 +69,15 @@ public class RangeArchiver extends Archiver
 
 		var model = new ModelOrder0Fixed();
 		model.calcWeights(fr.origFilename);
-		var cData = new CompressData(sin, sout,fr.fileSize, model);
+		var cData = new CompressData(sin, sout, fr.fileSize, model);
 
 		logger.info("Starting compression...");
 
-		if((COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.AARITHMETIC32) )
-		{
-			var c = new RangeCompressor32(Utils.MODE.MODE32);
-			model.rescaleTo(c.BOTTOM);
-			model.saveFreqs(sout);
+		var c = new RangeCompressor32(mode());
+		model.rescaleTo(c.BOTTOM);
+		model.saveFreqs(sout);
 
-			c.compress(cData);
-		}
-		else
-		{
-			var c = new RangeCompressor32(Utils.MODE.MODE64);
-			model.rescaleTo(c.BOTTOM);
-			model.saveFreqs(sout);
-
-			c.compress(cData);
-		}
+		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
 		fr.CRC32Value = cData.CRC32Value;
@@ -122,19 +118,17 @@ public class RangeArchiver extends Archiver
 		var model = new ModelOrder0Fixed();
 		model.loadFreqs(sin); //здесь читаем таблицы symbols и cumFreq из потока
 
-		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), Utils.getOptimalBufferSize(fr.fileSize));
+		Path p = Path.of(Utils.OUTPUT_DIRECTORY, fr.fileName);
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(p.toFile()), Utils.getOptimalBufferSize(fr.fileSize));
 		var uData = new CompressData(sin, sout, fr.compressedSize, fr.fileSize, model);
 
-		if(COMPRESSOR_CODE == Utils.CompTypes.ARITHMETIC32)
-		{
-			var uc = new RangeUncompressor32(Utils.MODE.MODE32);
-			uc.uncompress(uData);
-		}
+		RangeCompressor32 c;
+		if((COMPRESSOR_CODE == Utils.CompTypes.ARITHMETIC) || (COMPRESSOR_CODE == Utils.CompTypes.ARITHMETIC32) )
+			c = new RangeCompressor32(Utils.MODE.MODE32);
 		else
-		{
-			var uc = new RangeUncompressor32(Utils.MODE.MODE64);
-			uc.uncompress(uData);
-		}
+			c = new RangeCompressor32(Utils.MODE.MODE64);
+
+		c.uncompress(uData);
 
 		if (uData.CRC32Value != fr.CRC32Value)
 			logger.warning(String.format("CRC values for file '%s' are not equal: %d and %d", fr.fileName, uData.CRC32Value, fr.CRC32Value));
@@ -144,122 +138,39 @@ public class RangeArchiver extends Archiver
 		logger.info(String.format("Extracting done '%s'.", fr.fileName));
 	}
 
-
-
-	/**
-	 * записываем в архив размер закодированного потока в байтах и lastBits для каждого файла в архиве
-	 * @param fh Header with correct compressedSize, lastBits and CRC32Values
-	 * @param arcFilename Name of the archive
-	 * @throws IOException if something goes wrong
+	/** Extracts archived stream from archive file, saves it as temporary file
+	 *  and returns back InputStream to the temporary file.
+	 *  this is required for multithreaded uncompressing
+	 * @param sin - archive file input stream
+	 * @return temporary file as InputStream
 	 */
-	/*
 	@Override
-	public void updateHeaders(HFArchiveHeader fh, String arcFilename) throws IOException
+	public InputStream extractToTempFile(HFFileRec fr, InputStream sin) throws IOException
 	{
-		RandomAccessFile raf = new RandomAccessFile(new File(arcFilename), "rw");
+		File f = File.createTempFile("range", null);
+		int bufSize = Utils.getOptimalBufferSize(fr.compressedSize);
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(f), bufSize);
 
-		var offsets = fh.getFieldOffsets();
+		var model = new ModelOrder0Fixed();
+		model.loadFreqs(sin); // reading symbols and cumFreq tables from the stream
+		model.saveFreqs(sout);
 
-		int pos = offsets.get(FHeaderOffs.InitialOffset);
-
-		for (int i = 0; i < fh.files.size(); i++)
+		long totalRead = 0;
+		while (totalRead < fr.compressedSize)
 		{
-			HFFileRec fr = fh.files.get(i);
-
-			raf.seek(pos + offsets.get(FHeaderOffs.CRC32Value));
-			raf.writeLong(fr.CRC32Value);
-
-			raf.seek(pos + offsets.get(FHeaderOffs.compressedSize));
-			raf.writeLong(fr.compressedSize);
-
-			//raf.seek(pos + offsets.get("lastBits"));
-			//raf.writeByte(fr.lastBits);
-
-			// calculate pos of the next file record, for the next loop iteration
-			pos = pos + offsets.get(FHeaderOffs.FileRecSize) + fr.fileName.length()*2; // length()*2 because writeChars() saves each char as 2 bytes
+			int toRead = (int)Math.min((long)bufSize, fr.compressedSize - totalRead); // we need to read EXACTLY fr.compressedSize bytes from a stream
+			byte[] b = sin.readNBytes(toRead); // TODO may consume much memory since array b is allocated for each readNBytes call
+			sout.write(b);
+			totalRead += toRead;
 		}
 
-		raf.close();
+		sout.close();
+		f.deleteOnExit();
+
+		return new BufferedInputStream(new FileInputStream(f), bufSize);
 	}
-*/
 
 
-	/**
-	 * Читает весь файл и считает частоты встречаемости байтов в нем
-	 * Для binary files считает частоты тоже корректно.
-	 * *** Внимание - портит InputStream sin, передвигает его на конец файла *****
-	 * @throws IOException если что-то произошло с потоком
-	 */
-/*	protected void calcWeights(InputStream sin) throws IOException
-	{
-		logger.entering(Main.class.getName(),"calcWeights");
-
-		int BUF_SIZE = 100_000_000;  // если дали поток, то мы не знаем размер файла читаем кусками по BUF_SIZE (100М) тогда
-
-		long[] freq = new long[256];
-		byte[] buffer = new byte[BUF_SIZE];
-		//CRC32 cc = new CRC32();
-
-		int cntRead;
-		do
-		{
-			cntRead = sin.read(buffer);
-			if (cntRead == -1) break;
-			//	cc.update(buffer, 0, cntRead); // параллельно считаем CRC32 файла
-			for (int i = 0; i < cntRead; i++)
-				freq[Byte.toUnsignedInt(buffer[i])]++; // обходим знаковость байта
-
-		}while(cntRead == BUF_SIZE);
-
-		//CRC32Value = cc.getValue(); // сохраняем значение CRC32 для последующего использования
-
-		long sum = 0;
-		long min = Long.MAX_VALUE, max = 0;
-		int nonzero = 0;
-		for (long l : freq)
-		{
-			sum += l;
-			if(l > 0) nonzero++;
-			if(l > 0) min = Math.min(min, l);
-			max = Math.max(max, l);
-		}
-
-		symbols = new int[nonzero];
-		weights = new long[nonzero];
-
-		int j = 0;
-		for (int i = 0; i < freq.length; i++)
-		{
-			if(freq[i] > 0)
-			{
-				symbols[j] = i;
-				weights[j] = freq[i];
-				j++;
-			}
-		}
-
-		// preparing data for compressor/uncompressor
-		cumFreq = new long[weights.length + 1];
-		cumFreq[0] = 0;
-		for (int i = 0; i < weights.length; i++)
-		{
-			cumFreq[i+1] = cumFreq[i] + weights[i];
-		}
-		logger.finer(String.format("freq=%s", Arrays.toString(cumFreq)));
-
-		for (int i = 0; i < symbols.length; i++)
-		{
-			symbol_to_freq_index[symbols[i]] = i + 1;
-		}
-
-		logger.finer(String.format("symbols=%s", Arrays.toString(symbols)));
-		logger.finer(String.format("weights=%s",Arrays.toString(weights)));
-		logger.finer(String.format("min weight=%d, max weight=%d", min, max));
-		logger.finer(String.format("nonzero=%d, sum(size)=%d", nonzero, sum));
-
-		logger.exiting(Main.class.getName(),"calcWeights");
-	}
-*/
 }
 
 
