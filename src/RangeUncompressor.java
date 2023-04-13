@@ -125,21 +125,22 @@ public class RangeUncompressor
 
 	}
 
+	private final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
 	private void startProgress()
 	{
-		if(uData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) uData.cb.start();
+		if(uData.sizeUncompressed > SHOW_PROGRESS_AFTER) uData.cb.start();
 	}
 
 	private void finishProgress()
 	{
-		if(uData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) uData.cb.finish();
+		if(uData.sizeUncompressed > SHOW_PROGRESS_AFTER) uData.cb.finish();
 	}
 
 	long threshold = 0;
 	long delta;
 	private void updateProgress(long total)
 	{
-		if ((uData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) && (total > threshold))
+		if ((uData.sizeUncompressed > SHOW_PROGRESS_AFTER) && (total > threshold))
 		{
 			threshold += delta;
 			uData.cb.heartBeat((int) (100 * threshold / uData.sizeUncompressed));
