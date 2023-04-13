@@ -1,16 +1,18 @@
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.logging.Logger;
 import java.util.zip.CRC32;
 
-public class RLECompressor implements BlockCompressable{
+public class RLECompressor extends Compressor implements BlockCompressable, BlockUncompressable
+{
 	private final static Logger logger = Logger.getLogger(Utils.APP_LOGGER_NAME);
-	CompressData cData;
 	private final CRC32 crc = new CRC32();
 	private long outputBytes;
 	private long inputBytes;
-	final int EQUALS_MAXLEN = 129;
-	final int UNEQUALS_MAXLEN = 128;
+	private final int EQUALS_MAXLEN = 129;
+	private final int UNEQUALS_MAXLEN = 128;
 	private byte[] buffer;
+	RLECoder coder = new RLECoder();
 
 	@Override
 	public void startBlockCompressing(CompressData ccData)
@@ -24,28 +26,28 @@ public class RLECompressor implements BlockCompressable{
 		finishCompressing();
 	}
 
-	@Override
-	public void compressBlock(BlockCoderData data) throws IOException
+	/*
+	public void encodeBlock(BlockCoderData data) throws IOException
 	{
-		//int cntRead;
-		int head = 0;
-		int i = 0;
+		if(tout == null)
+			tout = new ByteArrayOutputStream2(data.destblock);
+		else
+			tout.setNewBuff(data.destblock);
 
-		long save = outputBytes;
+		compressBlockInternal(data, tout);
+		data.bytesInBlock = data.cBlockSize;
+	}
 
-		//int cntRead = cData.sin.read(buffer);
-		//if(cntRead == -1) return; // cannot read anything from the stream
+	private void compressBlockInternal(BlockCoderData data, OutputStream out) throws IOException
+	{
 		int cntRead = data.bytesInBlock;
 		byte[] buf = data.srcblock;
 
-		crc.update(buf);
-		inputBytes += cntRead;
-		//boolean last = cntRead < buffer.length; // if we've read less than buf.length symbols, it means there are no more symbols in the stream
-
+		int compressed = 0;
+		int head = 0;
+		int i = 0;
 		while(true)
 		{
-			updateProgress(inputBytes);
-
 			while ((i - head < UNEQUALS_MAXLEN) && (i < cntRead - 2))
 			{
 				if ((buf[i] == buf[i + 1]) && (buf[i] == buf[i + 2]))  // we've found three equal bytes in a row
@@ -64,9 +66,9 @@ public class RLECompressor implements BlockCompressable{
 				int count = (i - head - 1);  // do not forget to add 1 during decoding
 				assert count >= 0;
 				//total += count + 1;
-				cData.sout.write(count);
-				cData.sout.write(buf, head, i - head);
-				outputBytes += 1 + i - head;
+				out.write(count);
+				out.write(buf, head, i - head);
+				compressed += 1 + i - head;
 				head = i;
 			}
 
@@ -88,9 +90,9 @@ public class RLECompressor implements BlockCompressable{
 				assert count >= 0;
 				//total += count + 2;
 				count |= 0x80;    // set major bit
-				cData.sout.write(count);
-				cData.sout.write(buf[i]);   // saving just one repeated symbol
-				outputBytes += 2;
+				out.write(count);
+				out.write(buf[i]);   // saving just one repeated symbol
+				compressed += 2;
 				i = head = i + 1;
 			}
 			else i = head; // стопнули на UNEQUALS_MAXLEN в первом цикле и так оказалось что следующие 2 байта (только 2) одинаковые тогда портится i и нужно его вернуть на head
@@ -98,25 +100,26 @@ public class RLECompressor implements BlockCompressable{
 
 			assert i <= cntRead;
 
-	/*		if((!last) && (i > cntRead - EQUALS_MAXLEN)) // not enough bytes in the buf, reading more
-			{
-				int remaining = cntRead - i;
-				System.arraycopy(buffer, i, buf,0, remaining);
-				cntRead = cData.sin.read(buffer, remaining, buffer.length - remaining);
-				if(cntRead !=-1) crc.update(buffer, remaining, Math.min(buffer.length - remaining, cntRead));
-
-				head = 0;
-				i = 0;
-
-				cntRead = (cntRead == -1) ? remaining : cntRead + remaining;
-				last = (cntRead < buffer.length - remaining);
-			}
-*/
 			if(i == cntRead)
 				break;
 		}
 
-		data.cBlockSize = (int)(outputBytes - save);
+		data.cBlockSize = compressed;
+	}
+*/
+	@Override
+	public void compressBlock(BlockCoderData data) throws IOException
+	{
+		crc.update(data.srcblock);
+
+		inputBytes += data.bytesInBlock;
+		updateProgress(inputBytes);
+
+		//long save = outputBytes;
+
+		coder.encodeBlockAlg(data, cdata.sout);
+
+		//data.cBlockSize = (int)(outputBytes - save);
 	}
 
 	public void compress(CompressData ccData) throws IOException
@@ -130,7 +133,7 @@ public class RLECompressor implements BlockCompressable{
 
 		// it's easier to have working buffer = BLOCK_SIZE
 		//final int MAX_BUF_SIZE= 100_000_000;
-		int WORK_BUFFER = (cData.sizeUncompressed < (long) Utils.BLOCK_SIZE) ? (int) cData.sizeUncompressed : Utils.BLOCK_SIZE;
+		int WORK_BUFFER = (cdata.sizeUncompressed < (long) Utils.BLOCK_SIZE) ? (int) cdata.sizeUncompressed : Utils.BLOCK_SIZE;
 
 		if( (buffer == null) || (buffer.length < WORK_BUFFER))
 		{
@@ -141,7 +144,7 @@ public class RLECompressor implements BlockCompressable{
 		int head = 0;
 		int i = 0;
 
-		cntRead = cData.sin.read(buffer);
+		cntRead = cdata.sin.read(buffer);
 		if(cntRead == -1) return; // cannot read anything from the stream
 		crc.update(buffer);
 
@@ -170,8 +173,8 @@ public class RLECompressor implements BlockCompressable{
 				int count = (i - head - 1);  // do not forget to add 1 during decoding
 				assert count >= 0;
 				total += count + 1;
-				cData.sout.write(count);
-				cData.sout.write(buffer, head, i - head);
+				cdata.sout.write(count);
+				cdata.sout.write(buffer, head, i - head);
 				outputBytes += 1 + i - head;
 				head = i;
 			}
@@ -194,8 +197,8 @@ public class RLECompressor implements BlockCompressable{
 				assert count >= 0;
 				total += count + 2;
 				count |= 0x80;    // set major bit
-				cData.sout.write(count);
-				cData.sout.write(buffer[i]);   // saving just one repeated symbol
+				cdata.sout.write(count);
+				cdata.sout.write(buffer[i]);   // saving just one repeated symbol
 				outputBytes += 2;
 				i = head = i + 1;
 			}
@@ -208,7 +211,7 @@ public class RLECompressor implements BlockCompressable{
 			{
 				int remaining = cntRead - i;
 				System.arraycopy(buffer, i, buffer,0, remaining);
-				cntRead = cData.sin.read(buffer, remaining, buffer.length - remaining);
+				cntRead = cdata.sin.read(buffer, remaining, buffer.length - remaining);
 				if(cntRead !=-1) crc.update(buffer, remaining, Math.min(buffer.length - remaining, cntRead));
 
 				head = 0;
@@ -227,46 +230,194 @@ public class RLECompressor implements BlockCompressable{
 
 	private void finishCompressing() throws IOException
 	{
-		cData.sout.flush();
+		cdata.sout.flush();
 
 		finishProgress();
 
-		cData.sizeCompressed = outputBytes;
-		cData.CRC32Value = crc.getValue();
+		cdata.sizeCompressed = outputBytes;
+		cdata.CRC32Value = crc.getValue();
 	}
 
 	private void startCompressing(CompressData ccData)
 	{
-		this.cData = ccData;
+		this.cdata = ccData;
 		outputBytes = 0;  // сбрасываем счетчики
 		inputBytes = 0;
-		delta = cData.sizeUncompressed/100;
 
-		assert cData.sizeUncompressed > 0;
+		assert cdata.sizeUncompressed > 0;
 
-		startProgress();
+		startProgress(cdata.sizeUncompressed);
 	}
 
-	long threshold = 0;
-	long delta;
-	//final long SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
-	private void updateProgress(long total)
+	@Override
+	public void startBlockUncompressing(CompressData cData)
 	{
-		if ((cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) && (total > threshold))
+		startCompressing(cData);
+
+		//int WORK_BUFFER = (cdata.sizeCompressed < (long)Utils.BLOCK_SIZE) ? (int)cdata.sizeCompressed : Utils.BLOCK_SIZE;
+		//if( (buffer == null) || (buffer.length < WORK_BUFFER))
+		//{
+		//	buffer = new byte[WORK_BUFFER];
+		//}
+	}
+
+	@Override
+	public void finishBlockUncompressing()
+	{
+		//finishUncompressing();
+		finishProgress();
+		cdata.CRC32Value = crc.getValue();
+	}
+/*
+	public void decodeBlock(BlockCoderData data)
+	{
+		// старший бит=1 (|0x80)- означает что далее идут одинаковые символы.
+		// (старший бит=0)- означает что далее идет последовательность неодинаковых символов
+		// 129 - макс длина цепочки одинаковых символов. Отнимаем 2 от реальной длины
+		// 128 - макс длина цепочки неодинаковых символов. Отнимаем 1 от реальной длины. Два одинаковых подряд включаем в неодинаковые.
+
+		byte[] buf = data.srcblock;
+
+		data.resetDest();
+		int i = 0;
+		while(true)
 		{
-			threshold += delta;
-			cData.cb.heartBeat((int) (100 * threshold / cData.sizeUncompressed));
+			byte code = buf[i];
+			if(Byte.toUnsignedInt(code) > 127)
+			{ // equal bytes here
+				int num = (code & 0x7F) + 2;
+				for (int j = 0; j < num ; j++) // saving code+2 equal bytes
+				{
+					data.writeDest(buf[i + 1]);
+					//crc.update(buff[i + 1]);
+				}
+				i += 2;
+			}
+			else
+			{  // unequal bytes here
+				assert i + 1 < data.bytesInBlock;
+
+				if(i + 1 + code >= data.bytesInBlock)
+				{
+					logger.warning(String.format("WARNING! (i + 1 + code >= data.bytesInBlock) i=%d code=%d data.bytesInBlock=%d encodedbytes=%d compressedSize=%d", i, code, data.bytesInBlock, data.bytesInBlock, cdata.sizeCompressed));
+				}
+
+				assert i + 1 + code < data.bytesInBlock;
+
+				data.writeDest(buf, i + 1, code + 1);
+				//crc.update(buff, i + 1, code + 1);
+				i += code + 1 + 1;
+			}
+
+			if(i == data.bytesInBlock) break;
 		}
+		data.bytesInBlock = data.ind;
+	}
+*/
+	@Override
+	public void uncompressBlock(BlockCoderData data)
+	{
+		inputBytes += data.bytesInBlock;
+		updateProgress(inputBytes);
+
+		coder.decodeBlock(data);
+		crc.update(data.destblock, 0, data.bytesInBlock);
 	}
 
-	private void finishProgress()
+
+	public void uncompress(CompressData uuData) throws IOException
 	{
-		if(cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cData.cb.finish();
+		startCompressing(uuData);
+		if(cdata.sizeCompressed == 0) return; // for support of zero-length files
+
+		uncompressInternal();
+
+		cdata.sout.flush();
+		finishProgress();
+		cdata.CRC32Value = crc.getValue();
+		//finishUncompressing();
 	}
 
-	private void startProgress()
+	public void uncompressInternal() throws IOException
 	{
-		if(cData.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cData.cb.start();
+		// старший бит=1 (|0x80)- означает что далее идут одинаковые символы.
+		// (старший бит=0)- означает что далее идет последовательность неодинаковых символов
+		// 129 - макс длина цепочки одинаковых символов. Отнимаем 2 от реальной длины
+		// 128 - макс длина цепочки неодинаковых символов. Отнимаем 1 от реальной длины. Два одинаковых подряд включаем в неодинаковые.
+
+		final int EQUALS_MAXLEN = 129;
+		//final int MAX_BUF_SIZE= 100_000_000;
+		int WORK_BUFFER = (cdata.sizeCompressed < (long)Utils.BLOCK_SIZE) ? (int)cdata.sizeCompressed : Utils.BLOCK_SIZE;
+		if( (buffer == null) || (buffer.length < WORK_BUFFER))
+		{
+			buffer = new byte[WORK_BUFFER];
+		}
+
+		int i = 0;
+
+		int cntRead = cdata.sin.read(buffer, 0, (int)Math.min((long)buffer.length, cdata.sizeCompressed));
+		if(cntRead == -1) return; // cannot read anything from the stream
+
+		assert cntRead == (int)Math.min((long)buffer.length, cdata.sizeCompressed);
+
+		boolean last = cntRead < buffer.length; // if we've read less than buffer.length symbols, it means there are no more symbols in the stream
+		long encodedBytes = cntRead;
+
+		while(true/*encodedBytes < uData.sizeCompressed*/)
+		{
+			updateProgress(encodedBytes);
+
+			byte code = buffer[i];
+			if(Byte.toUnsignedInt(code) > 127)
+			{ // equal bytes here
+				int num = (code & 0x7F) + 2;
+				for (int j = 0; j < num ; j++) { cdata.sout.write(buffer[i + 1]); crc.update(buffer[i + 1]);}  // saving code+2 equal bytes
+				i += 2;
+			}
+			else
+			{  // unequal bytes here
+				assert i + 1 < buffer.length;
+
+				if(i + 1 + code >= buffer.length)
+				{
+					logger.warning(String.format("WARNING! (i + 1 + code >= buffer.length) i=%d code=%d buffer.length=%d encodedbytes=%d compressedSize=%d", i, code, buffer.length, encodedBytes, cdata.sizeCompressed));
+				}
+
+				assert i + 1 + code < buffer.length;
+
+				cdata.sout.write(buffer, i + 1, code + 1);
+				crc.update(buffer, i + 1, code + 1);
+				i += code + 1 + 1;
+			}
+
+			if(i == cntRead) break;
+
+			if((!last) && (i > cntRead - EQUALS_MAXLEN)) // too low bytes in the buffer, reading more
+			{
+				assert encodedBytes <= cdata.sizeCompressed;
+
+				int remaining = cntRead - i;
+				int toRead = (int) Math.min((long) (buffer.length - remaining), (long)(cdata.sizeCompressed - encodedBytes));
+
+				assert toRead >= 0;
+				last = (cdata.sizeCompressed - encodedBytes) < (long) (buffer.length - remaining);
+
+				if(toRead > 0)
+				{
+					System.arraycopy(buffer, i, buffer, 0, remaining);
+					cntRead = cdata.sin.read(buffer, remaining, toRead);
+
+					assert cntRead != -1;
+					assert cntRead == toRead;
+
+					encodedBytes += cntRead;
+					i = 0;
+					cntRead = (cntRead == -1) ? remaining : cntRead + remaining;
+				}
+			}
+
+		}
+
 	}
 
 }
