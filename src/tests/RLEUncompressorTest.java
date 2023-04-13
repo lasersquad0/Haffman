@@ -16,8 +16,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -37,8 +37,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -58,8 +58,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -79,8 +79,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -100,8 +100,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -121,8 +121,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -142,8 +142,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -163,8 +163,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -184,8 +184,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -205,8 +205,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -226,8 +226,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -247,8 +247,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -268,8 +268,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -289,8 +289,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -310,8 +310,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
@@ -334,8 +334,8 @@ public class RLEUncompressorTest {
 		var sout = new ByteArrayOutputStream(b.length*2);
 
 		var uData = new CompressData(sin, sout, b.length, s.length());
-		var uncomp = new RLEUncompressor();
-		uncomp.uData = uData;
+		var uncomp = new RLECompressor();
+		uncomp.cdata = uData;
 
 		uncomp.uncompressInternal();
 
