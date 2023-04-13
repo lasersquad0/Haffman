@@ -159,13 +159,11 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertEquals(156, s.length());
 		assertEquals(56, fr.compressedSize);
 		assertEquals("д", fr.fileName);
-		assertEquals(105, out.size());
-		//assertEquals(26, fr.lastBits);
+		assertEquals(109, out.size());
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 	}
@@ -198,13 +196,11 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertEquals(1, s.length());
 		assertEquals(1, fr.compressedSize);
 		assertEquals("]", fr.fileName);
-		assertEquals(53, out.size());
-		//assertEquals(1, fr.lastBits);
+		assertEquals(57, out.size());
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 	}
@@ -239,19 +235,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(157, s.length());
 		assertEquals(56, fr.compressedSize);
-		assertEquals(149, outForCompress.size());
-		//assertEquals(28, fr.lastBits);
+		assertEquals(153, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -303,19 +297,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(155, s.length());
 		assertEquals(55, fr.compressedSize);
-		assertEquals(149, outForCompress.size());
-		//assertEquals(22, fr.lastBits);
+		assertEquals(153, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -366,19 +358,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(109, s.length());
 		assertEquals(14, fr.compressedSize);
-		assertEquals(73, outForCompress.size());
-	//	assertEquals(13, fr.lastBits);
+		assertEquals(77, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -430,19 +420,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-	//	fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(137, s.length());
 		assertEquals(18, fr.compressedSize);
-		assertEquals(83, outForCompress.size());
-	//	assertEquals(9, fr.lastBits);
+		assertEquals(87, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -494,19 +482,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-	//	fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(135, s.length());
 		assertEquals(29, fr.compressedSize);
-		assertEquals(103, outForCompress.size());
-		//assertEquals(1, fr.lastBits);
+		assertEquals(107, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -558,19 +544,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(160, s.length());
 		assertEquals(20, fr.compressedSize);
-		assertEquals(513, outForCompress.size());
-	//	assertEquals(32, fr.lastBits);
+		assertEquals(517, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -621,19 +605,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(172, s.length());
 		assertEquals(119, fr.compressedSize);
-		assertEquals(447, outForCompress.size());
-		//assertEquals(20, fr.lastBits);
+		assertEquals(451, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -685,19 +667,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-	//	fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(1, s.length());
 		assertEquals(1, fr.compressedSize);
-		assertEquals(61, outForCompress.size());
-		//assertEquals(1, fr.lastBits);
+		assertEquals(65, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -754,19 +734,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(2, s.length());
 		assertEquals(1, fr.compressedSize);
-		assertEquals(173, outForCompress.size());
-		//assertEquals(2, fr.lastBits);
+		assertEquals(177, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -818,19 +796,17 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(2, s.length());
 		assertEquals(1, fr.compressedSize);
-		assertEquals(69, outForCompress.size());
-		//assertEquals(2, fr.lastBits);
+		assertEquals(73, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -883,20 +859,18 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(303, s.length());
 		assertEquals(447, s.getBytes().length);
 		assertEquals(215, fr.compressedSize);
-		assertEquals(851, outForCompress.size());
-		//assertEquals(20, fr.lastBits);
+		assertEquals(855, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -949,20 +923,18 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(98, s.length());
 		assertEquals(193, s.getBytes().length);
 		assertEquals(72, fr.compressedSize);
-		assertEquals(371, outForCompress.size());
-		//assertEquals(28, fr.lastBits);
+		assertEquals(375, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(500);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
@@ -1015,20 +987,18 @@ public class HFArchiverTest {
 		c.compress(cData);
 
 		fr.compressedSize = cData.sizeCompressed;
-		//fr.lastBits = cData.lastBits;
 
 		assertArrayEquals(fv, fd.fileVersion);
 		assertArrayEquals(fs, fd.fileSignature);
 		assertEquals(97, s.length());
 		assertEquals(191, s.getBytes().length);
 		assertEquals(71, fr.compressedSize);
-		assertEquals(365, outForCompress.size());
-	//	assertEquals(18, fr.lastBits);
+		assertEquals(369, outForCompress.size());
 
 		ByteArrayInputStream in3 = new ByteArrayInputStream(outForCompress.toByteArray());
 		ByteArrayOutputStream out3 = new ByteArrayOutputStream(200);
 
-		HFUncompressor uc = new HFUncompressor();
+		var uc = new HFCompressor();
 
 		fd.loadHeader(in3);
 
