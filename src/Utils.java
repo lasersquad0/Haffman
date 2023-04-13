@@ -1,15 +1,23 @@
 import java.io.*;
 import java.util.Arrays;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class Utils
 {
 	static final String APP_LOGGER_NAME = "ROMALogger";
 	public enum MODE {MODE32, MODE64}
-	public enum CompTypes { NONE, HUFFMAN, AHUFFMAN, RLE, ARITHMETIC, ARITHMETIC32, ARITHMETIC64, AARITHMETIC, AARITHMETIC32, AARITHMETIC64 }
-	public static String[] CompTypeSymbols = { "NONE", "HUF", "AHUF", "RLE", "ARI", "ARI32", "ARI64", "AARI", "AARI32", "AARI64" };
+	public enum CompTypes { NONE, HUFFMAN, AHUFFMAN, RLE, ARITHMETIC, ARITHMETIC32, ARITHMETIC64, AARITHMETIC, AARITHMETIC32, AARITHMETIC64, ABITARITHMETIC }
+	public static String[] CompTypeSymbols = { "NONE", "HUF", "AHUF", "RLE", "ARI", "ARI32", "ARI64", "AARI", "AARI32", "AARI64", "BITARI" };
 
-	public static final int SHOW_PROGRESS_AFTER = 1_000_000; // display progress only if file size is larger then this
-	public static int BLOCK_SIZE = 1 << 20;  // chrome.dll can be packed with block size 1<<20 only otherwise quickort generates stackoverflow
+
+	public static int BLOCK_SIZE = 1 << 16;
+	public static int THREADS_COUNT = 1;
+	public static String OUTPUT_DIRECTORY = "";
+	public static boolean VERBOSE = false;
+	public static boolean BLOCK_MODE = true; // use block mode where possible by default
+
 	private static final int MAX_BUF_SIZE = 100_000_000; // если файл >100M, то используем буфер этого размера иначе буфер размера файла
 	private static final int MIN_BUF_SIZE = 1_000; // if accidentally filesize==0, use small buffer
 
@@ -65,6 +73,37 @@ public class Utils
 		OutputStream sout = new BufferedOutputStream(new FileOutputStream(filename), Utils.getOptimalBufferSize(bs.size()));
 		bs.writeTo(sout);
 		sout.close();
+	}
+
+	private static ThreadPoolExecutor pool;
+	static synchronized ThreadPoolExecutor getThreadPool()
+	{
+	//	if(pool == null)
+//		{
+		ThreadPoolExecutor	pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(Utils.THREADS_COUNT - 1);
+			pool.setKeepAliveTime(20, TimeUnit.SECONDS); // need for shutdown pool without calling terminate, otherwise app stays in memory after main thread exited.
+			pool.allowCoreThreadTimeOut(true);
+	//	}
+
+		return pool;
+	}
+
+	static int parseNumber(String s) throws NumberFormatException
+	{
+		int factor = 1;
+		s = s.toUpperCase();
+		if(s.lastIndexOf("K") > 0)
+		{
+			s = s.substring(0, s.length()-1);
+			factor = 1_024;
+		}
+		else if(s.lastIndexOf("M") > 0)
+		{
+			s = s.substring(0, s.length()-1);
+			factor = 1024*1024;
+		}
+
+		return Integer.parseInt(s) * factor;
 	}
 
 	/*
