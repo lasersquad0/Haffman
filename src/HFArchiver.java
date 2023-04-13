@@ -1,4 +1,5 @@
 import java.io.*;
+import java.nio.file.Path;
 import java.util.logging.*;
 
 public class HFArchiver extends Archiver
@@ -19,7 +20,7 @@ public class HFArchiver extends Archiver
 	}
 
 	@Override
-	public void compressFiles(String[] filenames) throws IOException
+	public String compressFiles(String[] filenames) throws IOException
 	{
 		if(filenames.length < 2)
 			throw new IllegalArgumentException("There are no files to compress. Exiting...");
@@ -43,6 +44,8 @@ public class HFArchiver extends Archiver
 
 		fh.updateHeaders(arcFilename); // it is important to save info into files table that becomes available only after compression
 		logger.info("All files are processed.");
+
+		return arcFilename;
 	}
 
 	private void compressFile(OutputStream sout, HFFileRec fr) throws IOException
@@ -110,9 +113,10 @@ public class HFArchiver extends Archiver
 		HFTree tree = new HFTree();
 		tree.loadTable(sin);
 
-		OutputStream sout = new BufferedOutputStream(new FileOutputStream(fr.fileName), Utils.getOptimalBufferSize(fr.fileSize));
+		Path p = Path.of(Utils.OUTPUT_DIRECTORY, fr.fileName);
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(p.toFile()), Utils.getOptimalBufferSize(fr.fileSize));
 
-		var uc = new HFUncompressor();
+		var uc = new HFCompressor();
 		var uData = new CompressData(sin, sout, fr.compressedSize, fr.fileSize, tree);
 
 		uc.uncompress(uData);
@@ -123,6 +127,41 @@ public class HFArchiver extends Archiver
 		sout.close();
 
 		logger.info(String.format("Extracting done '%s'.", fr.fileName));
+	}
+
+	/** Extracts archived stream from archive file, saves it as temporary file
+	 *  and returns back InputStream to the temporary file.
+	 *  this is required for multithreaded uncompressing
+	 * @param sin - archive file input stream
+	 * @return temporary file as InputStream
+	 */
+	@Override
+	public InputStream extractToTempFile(HFFileRec fr, InputStream sin) throws IOException
+	{
+		File f = File.createTempFile("huff", null);
+		long streamSize = ((fr.compressedSize-1)/4)*4 +4; // because HFCompressor writes compressed data by ints
+		int bufSize = Utils.getOptimalBufferSize(streamSize);
+		OutputStream sout = new BufferedOutputStream(new FileOutputStream(f), bufSize);
+
+		HFTree tree = new HFTree();
+		tree.loadTable(sin);
+		tree.saveTable(sout);
+
+		assert (streamSize % 4) == 0;
+
+		long totalRead = 0;
+		while (totalRead < streamSize)
+		{
+			int toRead = (int)Math.min((long)bufSize, streamSize - totalRead); // we need to read EXACTLY streamSize bytes from a stream
+			byte[] b = sin.readNBytes(toRead); // TODO may consume much memory since array b is allocated for each readNBytes call
+			sout.write(b);
+			totalRead += toRead;
+		}
+
+		sout.close();
+		f.deleteOnExit();
+
+		return new BufferedInputStream(new FileInputStream(f), bufSize);
 	}
 
 }
