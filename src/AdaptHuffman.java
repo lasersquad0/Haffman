@@ -1,7 +1,7 @@
 import java.io.IOException;
 import java.util.zip.CRC32;
 
-public class AdaptHuffman implements BlockCompressable, BlockUncompressable
+public class AdaptHuffman extends Compressor implements BlockCompressable, BlockUncompressable
 {
 	private static class HNode
 	{
@@ -24,9 +24,10 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 	int size;
 	int[] map;
 	HNode[] table;
-	CompressData cdata;
+	//CompressData cdata;
 	private long encodedBytes;
 	private long decodedBytes;
+	private int blockNum;
 	private CRC32 crc = new CRC32();
 
 
@@ -52,12 +53,14 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 		ArcChar = 0;
 		encodedBytes = 0;  // сбрасываем счетчики
 		decodedBytes = 0;
+		blockNum = 0;
 	}
 
 	@Override
 	public void startBlockCompressing(CompressData cData)
 	{
 		startCompressing(cData);
+		startProgress((cdata.sizeUncompressed - 1)/Utils.BLOCK_SIZE + 1);
 	}
 
 	@Override
@@ -67,14 +70,45 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 	}
 
 	@Override
+	public void startBlockUncompressing(CompressData cData)
+	{
+		startCompressing(cData);
+		startProgress((cdata.sizeUncompressed - 1)/Utils.BLOCK_SIZE + 1);
+	}
+
+	@Override
+	public void finishBlockUncompressing()
+	{
+		finishProgress();
+	}
+
+	private void finishCompressing()
+	{
+		finishProgress();
+
+		cdata.sizeCompressed = encodedBytes;
+		cdata.CRC32Value = crc.getValue();
+	}
+
+	private void startCompressing(CompressData cData)
+	{
+		this.cdata = cData;
+		initData();
+	}
+
+	@Override
 	public void compressBlock(BlockCoderData data) throws IOException
 	{
 		long save = encodedBytes;
+
+		updateProgress(blockNum++);
+
 		for (int i = 0; i < data.bytesInBlock; i++)
 		{
-			crc.update(data.srcblock[i]);
-			updateProgress(decodedBytes++);
-			encodeSymbol(Byte.toUnsignedInt(data.srcblock[i]));
+			int sym = Byte.toUnsignedInt(data.srcblock[i]);
+			crc.update(sym);
+
+			encodeSymbol(sym);
 		}
 
 		writeLastBits(); // write partial bits for every block since they needed to decode last bytes of that block
@@ -88,33 +122,21 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 		resetBitCache(); // decode each block from scratch. because partial bits are written as a last byte of previous block.
 		data.resetDest();
 
+		updateProgress(blockNum++);
+
 		for (int i = 0; i < data.uBlockSize; i++)
 		{
-			updateProgress(decodedBytes);
-
 			int symbol = decodeSymbol();
 			crc.update(symbol);
 			data.writeDest(symbol);
-			decodedBytes++;
+			//decodedBytes++;
 		}
 	}
-
-	@Override
-	public void startBlockUncompressing(CompressData cData)
-	{
-		startCompressing(cData);
-	}
-
-	@Override
-	public void finishBlockUncompressing()
-	{
-		finishProgress();
-	}
-
 
 	public void compress(CompressData cData) throws IOException
 	{
 		startCompressing(cData);
+		startProgress(cdata.sizeUncompressed);
 
 		long total = 0;
 		int ch;
@@ -133,27 +155,10 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 		finishCompressing();
 	}
 
-	private void finishCompressing()
-	{
-		finishProgress();
-
-		cdata.sizeCompressed = encodedBytes;
-		cdata.CRC32Value = crc.getValue();
-	}
-
-	private void startCompressing(CompressData cData)
-	{
-		initData();
-
-		this.cdata = cData;
-		delta = cdata.sizeUncompressed/100;
-
-		startProgress();
-	}
-
 	public void uncompress(CompressData uData) throws IOException
 	{
 		startCompressing(uData);
+		startProgress(cdata.sizeUncompressed);
 
 		while(decodedBytes < cdata.sizeUncompressed)
 		{
@@ -353,8 +358,8 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 			//  slide down and out any unused ones
 			if ((table[node].weight & 1) > 0)
 			{
-				if ((weight = (table[table[node].down].weight & ~1)) > 0) // TODO возможно после 1 нужно поставить L
-					weight += table[table[node].down - 1].weight | 1;  // TODO и здесь тоже
+				if ((weight = (table[table[node].down].weight & ~1)) > 0)
+					weight += table[table[node].down - 1].weight | 1;
 
 				//  remove zero weight leaves by incrementing HuffEsc
 				//  and removing them from the symbol map.  take care
@@ -481,7 +486,6 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 	}
 
 //  decode the next symbol
-
 	private int decodeSymbol() throws IOException
 	{
 		int node = root;
@@ -559,28 +563,6 @@ public class AdaptHuffman implements BlockCompressable, BlockUncompressable
 	{
 		ArcBit = 0;
 		ArcChar = 0;
-	}
-
-	private void startProgress()
-	{
-		if(cdata.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cdata.cb.start();
-	}
-	private void finishProgress()
-	{
-		if (cdata.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) cdata.cb.finish();
-	}
-
-	long threshold = 0;
-	long delta;
-
-	private void updateProgress(long uncompressedBytes)
-	{
-		if((cdata.sizeUncompressed > Utils.SHOW_PROGRESS_AFTER) && (uncompressedBytes > threshold))
-		{
-			threshold += delta;
-			cdata.cb.heartBeat((int)(100*threshold/ cdata.sizeUncompressed));
-		}
-
 	}
 
 }
