@@ -1,5 +1,8 @@
 import java.io.*;
 import java.util.HashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class ArchiveManager
@@ -8,11 +11,13 @@ public class ArchiveManager
 
 	private static HashMap<Utils.CompTypes,Archiver> pool = null;
 
-	private static void initPool()
+	private static void initArchiversPool()
 	{
-		if(pool != null) return;
+		if(pool == null)
+			pool = new HashMap<>();
+		else
+			pool.clear();
 
-		pool = new HashMap<>();
 		pool.put(Utils.CompTypes.NONE, null);
 		pool.put(Utils.CompTypes.HUFFMAN, new HFArchiver());
 		pool.put(Utils.CompTypes.AHUFFMAN, new HFAdaptArchiver());
@@ -23,11 +28,12 @@ public class ArchiveManager
 		pool.put(Utils.CompTypes.AARITHMETIC,  new RangeAdaptArchiver());
 		pool.put(Utils.CompTypes.AARITHMETIC32, new RangeAdaptArchiver(Utils.CompTypes.AARITHMETIC32));
 		pool.put(Utils.CompTypes.AARITHMETIC64, new RangeAdaptArchiver(Utils.CompTypes.AARITHMETIC64));
+		pool.put(Utils.CompTypes.ABITARITHMETIC, new RangeAdaptArchiver(Utils.CompTypes.ABITARITHMETIC));
 	}
 
 	public static void uncompressFiles(String arcFilename) throws IOException
 	{
-		if(pool == null) initPool();
+		initArchiversPool();
 
 		File fl = new File(arcFilename);
 		long fileLen = fl.length();
@@ -36,13 +42,52 @@ public class ArchiveManager
 		HFArchiveHeader fh = new HFArchiveHeader();
 		fh.loadHeader(sin);
 
-		for (int i = 0; i < fh.files.size(); i++)
-		{
-			HFFileRec fr = fh.files.get(i);
+		boolean useThreads = (Utils.THREADS_COUNT > 1) && (fh.files.size() > 1);
 
-			Utils.CompTypes comp = Utils.CompTypes.values()[fr.alg];
-			Archiver arc = pool.get(comp);
-			arc.unCompressFile(fr, sin);
+		if(useThreads) // we have several files in archive, uncompress them in threads
+		{
+			ThreadPoolExecutor threadsPool = Utils.getThreadPool(); //(ThreadPoolExecutor) Executors.newFixedThreadPool(Utils.THREADS_COUNT - 1);
+
+			for (int i = 0; i < fh.files.size(); i++)
+			{
+				HFFileRec fr = fh.files.get(i);
+				Archiver arc = pool.get(Utils.CompTypes.values()[fr.alg]);
+
+				InputStream sin2 = arc.extractToTempFile(fr, sin);
+				threadsPool.submit(new Runnable() {
+					@Override
+					public void run()
+					{
+						try
+						{
+							arc.unCompressFile(fr, sin2);
+						} catch (IOException e)
+						{
+							throw new RuntimeException(e);
+						}
+					}
+				});
+			}
+
+			threadsPool.shutdown();
+
+			try
+			{
+				while(!threadsPool.awaitTermination(1, TimeUnit.SECONDS)); // wait till all tasks have been finished
+			} catch (InterruptedException e)
+			{
+				throw new RuntimeException(e);
+			}
+
+		}
+		else // either we have one file in archive or THREADS_COUNT==1
+		{
+			for (int i = 0; i < fh.files.size(); i++)
+			{
+				HFFileRec fr = fh.files.get(i);
+				Archiver arc = pool.get(Utils.CompTypes.values()[fr.alg]);
+				arc.unCompressFile(fr, sin);
+			}
 		}
 
 		sin.close();
