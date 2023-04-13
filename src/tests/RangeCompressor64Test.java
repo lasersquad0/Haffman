@@ -36,7 +36,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -72,7 +72,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -107,7 +107,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -143,7 +143,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -179,7 +179,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -215,7 +215,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -251,7 +251,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -286,7 +286,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -322,7 +322,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -358,7 +358,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -394,7 +394,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -430,7 +430,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -466,7 +466,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 
@@ -502,7 +502,7 @@ public class RangeCompressor64Test {
 		ByteArrayInputStream in2 = new ByteArrayInputStream(sout.toByteArray());
 		ByteArrayOutputStream out2 = new ByteArrayOutputStream(200);
 
-		var uc = new RangeUncompressor32(Utils.MODE.MODE64);
+		var uc = new RangeCompressor32(Utils.MODE.MODE64);
 		var uData = new CompressData(in2, out2, data.sizeCompressed, data.sizeUncompressed, model);
 		uc.uncompress(uData);
 

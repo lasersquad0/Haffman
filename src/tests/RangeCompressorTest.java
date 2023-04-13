@@ -19,9 +19,9 @@ public class RangeCompressorTest {
 
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
-		var data = new CompressData(sin, sout, s.getBytes().length,model);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(11, s.length());
 		assertEquals(11, s.getBytes().length);
@@ -57,9 +57,9 @@ public class RangeCompressorTest {
 
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
-		var data = new CompressData(sin, sout, s.getBytes().length,model);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(9, s.length());
 		assertEquals(9, s.getBytes().length);
@@ -96,7 +96,7 @@ public class RangeCompressorTest {
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
 		var data = new CompressData(sin, sout, s.getBytes().length, model);
-		c.compress(data,model);
+		c.compress(data);
 
 		assertEquals(20, s.length());
 		assertEquals(20, s.getBytes().length);
@@ -131,7 +131,7 @@ public class RangeCompressorTest {
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
 		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(20, s.length());
 		assertEquals(20, s.getBytes().length);
@@ -167,7 +167,7 @@ public class RangeCompressorTest {
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
 		var data = new CompressData(sin, sout, s.getBytes().length,model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(19, s.length());
 		assertEquals(19, s.getBytes().length);
@@ -203,7 +203,7 @@ public class RangeCompressorTest {
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
 		var data = new CompressData(sin, sout, s.getBytes().length,model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(33, s.length());
 		assertEquals(33, s.getBytes().length);
@@ -239,7 +239,7 @@ public class RangeCompressorTest {
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
 		var data = new CompressData(sin, sout, s.getBytes().length,model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(146, s.length());
 		assertEquals(146, s.getBytes().length);
@@ -273,9 +273,9 @@ public class RangeCompressorTest {
 
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
-		var data = new CompressData(sin, sout, s.getBytes().length,model);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(143, s.length());
 		assertEquals(143, s.getBytes().length);
@@ -308,9 +308,9 @@ public class RangeCompressorTest {
 
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
-		var data = new CompressData(sin, sout, s.getBytes().length,model);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(111, s.length());
 		assertEquals(111, s.getBytes().length);
@@ -344,9 +344,9 @@ public class RangeCompressorTest {
 
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
-		var data = new CompressData(sin, sout, s.getBytes().length,model);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(50, s.length());
 		assertEquals(50, s.getBytes().length);
@@ -381,9 +381,9 @@ public class RangeCompressorTest {
 
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
-		var data = new CompressData(sin, sout, s.getBytes().length,model);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(1001, s.length());
 		assertEquals(1001, s.getBytes().length);
@@ -419,7 +419,7 @@ public class RangeCompressorTest {
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
 		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(1001, s.length());
 		assertEquals(1001, s.getBytes().length);
@@ -454,7 +454,7 @@ public class RangeCompressorTest {
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
 		var data = new CompressData(sin, sout, s.getBytes().length,model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(48, s.length());
 		assertEquals(48, s.getBytes().length);
@@ -488,9 +488,9 @@ public class RangeCompressorTest {
 
 		var c = new RangeCompressor();
 		var model = new ModelOrder0Adapt(RangeCompressor.BOTTOM);
-		var data = new CompressData(sin, sout, s.getBytes().length,model);
+		var data = new CompressData(sin, sout, s.getBytes().length, model);
 
-		c.compress(data, model);
+		c.compress(data);
 
 		assertEquals(39, s.length());
 		assertEquals(78, s.getBytes().length);
